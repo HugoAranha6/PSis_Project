@@ -1,0 +1,16 @@
+Execution helper.
+
+1. Type of input
+    roaches-client or lizard-client, with one address:port
+    Example:
+    ./lizard-client 127.0.0.1:5555
+    ./roaches-client 127.0.0.1:5555
+
+    display-app, with two address:port on the format
+    ./prog <REQ-REP opt> <PUB-SUB opt>
+    Example:
+    ./display-app 127.0.0.1:5555 127.0.0.1:5556
+
+In the server, ports for REP is 5555 and for SUB 5556 so
+Port 5555 should be used for all REQ in other apps
+Port 5556 should be used for the SUB in other apps

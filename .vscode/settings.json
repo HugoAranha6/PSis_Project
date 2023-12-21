@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "ncurses.h": "c",
+        "stdlib.h": "c",
+        "types.h": "c",
+        "stat.h": "c",
+        "remote-char.h": "c",
+        "zhelpers.h": "c"
+    },
+    "cmake.configureOnOpen": false,
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/hugoaranha6/psis/Project",
+            "binaryPath": "/home/hugoaranha6/psis/Project/display",
+            "binaryArgs": []
+        }
+    ],
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
+}
