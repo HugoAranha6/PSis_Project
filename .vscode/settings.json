@@ -5,7 +5,8 @@
         "types.h": "c",
         "stat.h": "c",
         "remote-char.h": "c",
-        "zhelpers.h": "c"
+        "zhelpers.h": "c",
+        "lizard-helper.h": "c"
     },
     "cmake.configureOnOpen": false,
     "makefile.launchConfigurations": [
