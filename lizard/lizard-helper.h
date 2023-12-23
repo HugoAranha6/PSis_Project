@@ -24,7 +24,8 @@ typedef enum direction_t {
     RIGHT=3,
     HOLD=4,
     s_lizard=-1,
-    s_roach=-2
+    s_roach=-2,
+    s_wasp =-3
 }direction_t;
 
 // Message type, all types available for users
@@ -156,47 +157,44 @@ server and receives score. When pressing Q to leave the game,
 a DISCONNECT message is sent and variable score will be assigned
 to the lizard current score
 */
-void user_input(void* requester,client* m,int* score){
+void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** score_win){
     
     int key;
-    WINDOW *title_win, *score_win;
-
     (*m).type = 1;
 
-    // Initialize interface
-    user_interface(&title_win,&score_win);
-    mvwprintw(score_win, 1, 1, "Score: %d",*score);
-    wrefresh(score_win);
+    
+    mvwprintw(*score_win, 1, 1, "Score: %d",*score);
+    wrefresh(*score_win);
     do
     {   
         key = getch();	// Keyboard input
         switch (key)
         {
         case KEY_LEFT:
-            werase(title_win);
-            mvwprintw(title_win,0,0,"Left arrow is pressed");
+            werase(*title_win);
+            mvwprintw(*title_win,0,0,"Left arrow is pressed");
             (*m).direction = LEFT;
             break;
         case KEY_RIGHT:
-            werase(title_win);
-            mvwprintw(title_win,0,0,"Right arrow is pressed");
+            werase(*title_win);
+            mvwprintw(*title_win,0,0,"Right arrow is pressed");
             (*m).direction = RIGHT;
             break;
         case KEY_DOWN:
-            werase(title_win);
-            mvwprintw(title_win,0,0,"Down arrow is pressed");
+            werase(*title_win);
+            mvwprintw(*title_win,0,0,"Down arrow is pressed");
             (*m).direction = DOWN;
             break;
         case KEY_UP:
-            werase(title_win);
-            mvwprintw(title_win,0,0,"Up arrow is pressed");
+            werase(*title_win);
+            mvwprintw(*title_win,0,0,"Up arrow is pressed");
             (*m).direction = UP;
             break;
         case 81:
         case 113:
             // Q or q case for DISCONNECT
-            werase(title_win);
-            mvwprintw(title_win,0,0,"Leaving the game");
+            werase(*title_win);
+            mvwprintw(*title_win,0,0,"Leaving the game");
             (*m).type = 2; // change message type to DISCONNECT
             break;
         default:
@@ -206,12 +204,12 @@ void user_input(void* requester,client* m,int* score){
 
          if (key != 'x'){
             *score = user_server_message(requester,*m);
-            werase(score_win);
-            mvwprintw(score_win,1,1,"Score: %d",*score); // Update current score displayed
+            werase(*score_win);
+            mvwprintw(*score_win,1,1,"Score: %d",*score); // Update current score displayed
         }
         /* Print it on screen */
-        wrefresh(title_win);
-        wrefresh(score_win);
+        wrefresh(*title_win);
+        wrefresh(*score_win);
     }while(key != 81 && key != 113);
     endwin();
 }
