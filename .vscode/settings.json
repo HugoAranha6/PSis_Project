@@ -14,6 +14,11 @@
             "cwd": "/home/hugoaranha6/psis/Project",
             "binaryPath": "/home/hugoaranha6/psis/Project/display",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/hugoaranha6/psis/Project_Shared",
+            "binaryPath": "/home/hugoaranha6/psis/Project_Shared/lizard-client",
+            "binaryArgs": []
         }
     ],
     "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
