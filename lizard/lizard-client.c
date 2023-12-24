@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 {
     
     
-    // Initialize and connect to server
+    // Initialize requester and subscriber sockets, request initial grid information
     n_lizards = user_initialize(&requester,&subscriber,&m,argc,argv,grid);
 
     // Initialize interface
@@ -64,8 +64,11 @@ int main(int argc, char *argv[])
     
         
     pthread_t thread_id[2];
+    // Thread to handle user input
     pthread_create(&thread_id[0], NULL, input_thread, NULL);
+    // Thread to handle display
     pthread_create(&thread_id[1],NULL,display_thread,NULL);
+
     pthread_join(thread_id[0], NULL);
     pthread_cancel(thread_id[1]);
     endwin();
