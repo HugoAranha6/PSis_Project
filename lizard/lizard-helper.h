@@ -208,13 +208,10 @@ int user_server_message(void* requester,client m){
 volatile sig_atomic_t ctrl_c_flag = 0;
 
 // Signal handler for Ctrl+C
-void handle_ctrl_c(int signum) {
+void handle_ctrl_c(int signum,void* requester,client* m) {
     ctrl_c_flag=1;
 }
 
-void* thread_CtrlC(void*arg){
-    signal(SIGINT, handle_ctrl_c);
-}
 
 /*
 Input: requester socket, pointer to client type message
@@ -228,12 +225,11 @@ to the lizard current score
 */
 void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** score_win){
     
-    signal(SIGINT, handle_ctrl_c);
+    signal(SIGINT, (void (*)(int))handle_ctrl_c);
 
     int key;
     (*m).type = 1;
     
-
     do
     {   
         key = getch();	// Keyboard input
