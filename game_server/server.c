@@ -44,9 +44,10 @@ int main()
 
         // Client message
         if(strcmp(id,"client")==0){
-            client m = {.ch=0,.direction=0,.token=0,.type=-1};
-            zmq_recv (responder, &m, sizeof(m), 0);
-            switch (m.type){
+            msg_type m_type;
+            zmq_recv(responder,&m_type,sizeof(m_type),0);
+            
+            switch (m_type){
             case CONNECT: 
                 // Lizard connection message
                 if (n_clients<MAX_USERS){
@@ -67,14 +68,16 @@ int main()
                 }
                 break;
             case MOVE: 
+                client m_move = {.ch=0,.direction=0,.token=0};
+                zmq_recv (responder, &m_move, sizeof(m_move), 0);
                 // Lizard movement message
                 // Find lizard in the stored data based on the char and token received
-                ch_pos = find_ch_info(lizard_data, n_clients, m.ch,m.token);
+                ch_pos = find_ch_info(lizard_data, n_clients, m_move.ch,m_move.token);
                 if(ch_pos != -1){
                     pos_x = lizard_data[ch_pos].pos_x;
                     pos_y = lizard_data[ch_pos].pos_y;
                     int pos_y0 = pos_y, pos_x0=pos_x;
-                    lizard_data[ch_pos].direction=m.direction;
+                    lizard_data[ch_pos].direction=m_move.direction;
                     
                     // Calculate future position
                     new_position(&pos_x, &pos_y, lizard_data[ch_pos].direction);
@@ -91,10 +94,12 @@ int main()
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);
                 } 
                 break;
-            case DISCONNECT: 
+            case DISCONNECT:
+                client_disconnect m_disc;
+                zmq_recv (responder, &m_disc, sizeof(m_disc), 0); 
                 // Lizard disconnect message
                 // Find lizard in the stored data based on the char and token received
-                ch_pos = find_ch_info(lizard_data, n_clients, m.ch,m.token);
+                ch_pos = find_ch_info(lizard_data, n_clients, m_disc.ch,m_disc.token);
                 if(ch_pos!=-1){
                     // Send final score
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);

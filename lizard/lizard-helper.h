@@ -36,13 +36,18 @@ typedef enum direction_t {
 // Message type, all types available for users
 typedef enum msg_type {CONNECT, MOVE, DISCONNECT} msg_type;
 
-// User-Server messages
+// User-Server messages for movement
 typedef struct client{   
-    msg_type type;          // Identify message type 0/1/2
     char ch;                // Identify user 
     direction_t direction ; // Identify movement direction
     int token;              // Identify user
 }client;
+
+// User-Server messages for disconnect
+typedef struct client_disconnect{   
+    char ch;                // Identify user 
+    int token;              // Identify user
+}client_disconnect;
 
 // Server to Display messages
 typedef struct display_data{
@@ -98,7 +103,7 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
     *subscriber = zmq_socket (context, ZMQ_SUB);
     int rc = zmq_connect (*requester, user_server_com);
     assert(rc==0);
-    (*m).type=0;
+
     char ch_tmp;
     do
     {
@@ -108,10 +113,10 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
         while (getchar() != '\n');
     } while (ch_tmp!='y');
     
+    msg_type m_type =0;
     // Connection message exchange
-    s_sendmore(*requester,"client");
-    rc = zmq_send (*requester, m, sizeof(client), 0);
-    assert(rc!=-1);
+    assert(s_sendmore(*requester,"client")!=-1);
+    assert(zmq_send (*requester, &m_type, sizeof(msg_type), 0)!=-1);
 
     assert(zmq_recv (*requester, &ch_tmp, sizeof(char), 0)!=-1);
     
@@ -130,16 +135,16 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
 
 
     /*Display initialize*/
-    int token;
+    int token_display;
     s_send(*requester,"display");
-    zmq_recv(*requester, &token, sizeof(token),0);
+    zmq_recv(*requester, &token_display, sizeof(token_display),0);
 
     char display_server_com[50];
     strcpy(display_server_com, "tcp://");
     strcat(display_server_com, argv[2]);
 
     char token_char[100];
-    sprintf(token_char,"%d",token);
+    sprintf(token_char,"%d",token_display);
 
     zmq_connect (*subscriber, display_server_com);
     zmq_setsockopt (*subscriber, ZMQ_SUBSCRIBE,token_char, strlen(token_char));
@@ -192,15 +197,21 @@ Input: requester socket and a client message to be sent
 Output: integer, current user score received 
 User-Server standard communication when sending movements
 */
-int user_server_message(void* requester,client m){
+int user_server_message(void* requester,client m, msg_type m_type){
     int score;
     // Movement type communication procedure
     assert(s_sendmore(requester,"client")!=-1);
-    int rc = zmq_send (requester, &m, sizeof(m), 0);
-    assert(rc!=-1);
+    assert(zmq_send(requester,&m_type,sizeof(m_type),ZMQ_SNDMORE)!=-1);
+    if(m_type == MOVE){
+        assert(zmq_send (requester, &m, sizeof(m), 0)!=-1);
+    }else if(m_type==DISCONNECT){
+        client_disconnect lizard_disc={.ch=m.ch,.token=m.token};
+        assert(zmq_send (requester, &lizard_disc, sizeof(lizard_disc), 0)!=-1);
+    }
+    
+
     // Receive current score
-    rc = zmq_recv (requester, &score, sizeof(score), 0);
-    assert(rc!=-1);
+    assert(zmq_recv (requester, &score, sizeof(score), 0)!=-1);
     return score;
 }
 
@@ -228,8 +239,7 @@ void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW**
     signal(SIGINT, (void (*)(int))handle_ctrl_c);
 
     int key;
-    (*m).type = 1;
-    
+    msg_type m_type=1;
     do
     {   
         key = getch();	// Keyboard input
@@ -261,22 +271,21 @@ void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW**
             // Q or q case for DISCONNECT
             werase(*title_win);
             mvwprintw(*title_win,0,0,"Leaving the game");
-            (*m).type = 2; // change message type to DISCONNECT
+            m_type = 2; // change message type to DISCONNECT
             break;
         default:
             key = 'x'; 
             break;
         }
         if(ctrl_c_flag==1){
-            (*m).type=2;
-            *score = user_server_message(requester,*m);
+            m_type=2;
+            *score = user_server_message(requester,*m,m_type);
         }else if (key != 'x'){
-            *score = user_server_message(requester,*m);
+            *score = user_server_message(requester,*m,m_type);
         }
         /* Print it on screen */
         wrefresh(*title_win);
         pthread_mutex_unlock(&mutex_print);
-        //wrefresh(*score_win);
     }while(key != 81 && key != 113 && ctrl_c_flag!=1);
 
     endwin();

@@ -37,11 +37,15 @@ typedef enum msg_type {CONNECT, MOVE, DISCONNECT} msg_type;
 
 // User to Server messages
 typedef struct client{   
-    msg_type type;          // Identify message type 0/1/2
     char ch;                // Identify user 
     direction_t direction ; // Identify movement direction
     int token;              // Identify user
 }client;
+// User-Server messages for disconnect
+typedef struct client_disconnect{   
+    char ch;                // Identify user 
+    int token;              // Identify user
+}client_disconnect;
 
 // Structure to store data on the server, both users and bots
 typedef struct client_info{
