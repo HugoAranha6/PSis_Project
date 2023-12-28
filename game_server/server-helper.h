@@ -156,11 +156,10 @@ Initialize server. Will start the connections to the sockets for REP-REQ
 and PUB-SUB and initializes the usar_char such that the characters are
 set from a-z (lizards)
 -------------------------------------------------------------*/
-int server_initialize (void **responder, void **publisher, char user_char[]){
-    void *context = zmq_ctx_new ();
+int server_initialize (void* context,void **responder, void **publisher, char user_char[]){
     
     // Client - Server
-    *responder = zmq_socket (context, ZMQ_REP);
+    *responder = zmq_socket (context, ZMQ_ROUTER);
     int rc = zmq_bind (*responder, server_user_com);
     assert(rc==0);
 
@@ -693,9 +692,9 @@ void send_display_user(client_info lizard_data, void* publisher, int x0, int y0,
         lizard_update.pos_y1=0;
     }
     // Publishing
-    char mess[100];
-    sprintf(mess, "%d", token);
-    s_sendmore(publisher,mess);
+    //char mess[100];
+    //sprintf(mess, "%d", token);
+    //s_sendmore(publisher,mess);
     s_sendmore(publisher,"lizard");
     zmq_send(publisher, &lizard_update, sizeof(lizard_update), 0);
 }
@@ -722,7 +721,7 @@ int checkGrid_lizard(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_in
                     grid[*x][*y]->score = tmp;
                     grid[client.pos_x][client.pos_y]->score = tmp;
                     // If there was a collision publish information of the hit lizard
-                    send_display_user(*(grid[*x][*y]),publisher,*x,*y,0,token);
+                    send_display_user(*(grid[*x][*y]),publisher,*x,*y,0,0);
                 }
             }
         }else{
