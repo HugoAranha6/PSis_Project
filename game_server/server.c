@@ -8,29 +8,88 @@
 #include "server-helper.h"
 
 
+// Variable to store grid data, grid composed by pointers, pointing to client_info structures	
+client_info* grid[WINDOW_SIZE][WINDOW_SIZE]={[0 ... WINDOW_SIZE-1] = {[0 ... WINDOW_SIZE-1] = NULL}};
+
+client_info* lizard_data; // Varibale to store lizard data
+    
+client_info* bot_data; // Variable to store roaches data
+
+char user_char[MAX_USERS]; // Variable to store lizard char, a...z
+
+int n_clients = 0; // Store number of clients
+int n_bots = 0;    // Store number of bots
+
+// Initialize server sockets for communication and lizard data
+void *responder, *publisher, *context;
+
+// Initialize and print user interface: game board, score and title
+WINDOW *title_win, *game_win, *score_win;
+
+void* time_thread(void* arg){
+    void *pusher = zmq_socket(context, ZMQ_PUSH);
+
+    // Connect to the sink using an inproc socket
+    zmq_connect(pusher, "tcp://mysocket");
+    while(1){
+        // Reassign invisible bots that were eaten
+        user_timeout(&n_clients,lizard_data,grid,user_char,pusher);
+    }
+    return NULL;
+}
+
+void* display_thread(void* arg){
+    void *sock_recv = zmq_socket(context, ZMQ_PULL);
+
+    // Bind to the inproc address
+    zmq_bind(sock_recv, "inproc://mysocket");
+
+    int token = *((int *)arg);
+    char token_char[100];
+    sprintf(token_char, "%d", token);
+    
+    while(1){
+        char id[100]="\0";
+        zmq_recv (sock_recv, &id, sizeof(id), 0); 
+        if(strcmp(id,"update")==0){
+            s_sendmore(publisher,token_char);
+            s_send(publisher, id);
+            // Update server display
+            printGrid(grid,&game_win,&score_win,lizard_data,n_clients);
+        }else{
+            display_data new_data;
+            zmq_recv(sock_recv, &new_data, sizeof(new_data), 0);
+            s_sendmore(publisher,token_char);
+            s_sendmore(publisher, id);
+            zmq_send(publisher, &new_data, sizeof(display_data), 0);
+        }
+        
+    }
+
+    return NULL;
+}
+
+
+
 
 int main()
 {
-    // Variable to store grid data, grid composed by pointers, pointing to client_info structures	
-    client_info* grid[WINDOW_SIZE][WINDOW_SIZE]={[0 ... WINDOW_SIZE-1] = {[0 ... WINDOW_SIZE-1] = NULL}};;
     
-    client_info* lizard_data; // Varibale to store lizard data
+    //int* visible=(int*)malloc(0*sizeof(int)); // Variable to store bot visibility, 0=visible
+    context = zmq_ctx_new();
     
-    client_info* bot_data; // Variable to store roaches data
-
-    int* visible=(int*)malloc(0*sizeof(int)); // Variable to store bot visibility, 0=visible
-    char user_char[MAX_USERS];                // Variable to store lizard char, a...z
-
-    int n_clients = 0; // Store number of clients
-    int n_bots = 0;    // Store number of bots
     
-    // Initialize server sockets for communication and lizard data
-    void *responder, *publisher;
+    
+    
+    
     int token = server_initialize(&responder,&publisher,user_char);
-    // Initialize and print user interface: game board, score and title
-    WINDOW *title_win, *game_win, *score_win;
+    
 	server_interface(&title_win,&game_win,&score_win);
-        
+
+    pthread_t thread_id[2];
+    pthread_create(&thread_id[0],NULL,time_thread,NULL);   
+    pthread_create(&thread_id[1],NULL,display_thread,(void *)&token); 
+
     while (1){
         int ch=0, pos_x=0, pos_y=0;
         int ch_pos; int new_bots;
@@ -40,7 +99,7 @@ int main()
         zmq_recv (responder, &id,sizeof(id),0);
 
         // Reassign invisible bots that were eaten
-        bot_reconnect(visible,n_bots,bot_data,grid,publisher,token);
+        bot_reconnect(n_bots,bot_data,grid,publisher,token);
 
         // Client message
         if(strcmp(id,"client")==0){
@@ -74,6 +133,7 @@ int main()
                 // Find lizard in the stored data based on the char and token received
                 ch_pos = find_ch_info(lizard_data, n_clients, m_move.ch,m_move.token);
                 if(ch_pos != -1){
+                    lizard_data[ch_pos].visible=time(NULL);
                     pos_x = lizard_data[ch_pos].pos_x;
                     pos_y = lizard_data[ch_pos].pos_y;
                     int pos_y0 = pos_y, pos_x0=pos_x;
@@ -85,14 +145,17 @@ int main()
                     //Checks grid for roaches or lizard in new position
                     if(pos_x!=lizard_data[ch_pos].pos_x || pos_y!=lizard_data[ch_pos].pos_y){
                         if(checkGrid_lizard(grid,&pos_x,&pos_y,lizard_data[ch_pos],publisher,token)==1){
-                            eat_roach(bot_data,n_bots,&lizard_data[ch_pos],visible);    
+                            eat_roach(bot_data,n_bots,&lizard_data[ch_pos]);    
                         }
                         // Publish to Displays
                         send_display_user(lizard_data[ch_pos],publisher,pos_x0,pos_y0,0,token);
                     }
                     // Send current score to client
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);
-                } 
+                }else{
+                    int time_o=INT_MIN;
+                    zmq_send(responder,&time_o,sizeof(time_o),0);
+                }
                 break;
             case DISCONNECT:
                 client_disconnect m_disc;
@@ -130,7 +193,7 @@ int main()
                     zmq_send(responder,&(ch),sizeof(int),ZMQ_SNDMORE);
 
                     // Add #new_bots new bots to the data structure and grid
-                    bot_data=bot_connect(n_bots,bot_data,new_bots,&roach_message,grid,publisher,token,&visible);
+                    bot_data=bot_connect(n_bots,bot_data,new_bots,&roach_message,grid,publisher,token);
                     n_bots = n_bots+new_bots;
 
                     // Send to client a message with IDs and tokens
@@ -147,7 +210,7 @@ int main()
                     // Find the bot to move in the data
                     ch_pos = find_ch_info(bot_data,n_bots,roach_message.id[i],roach_message.token[i]);
 
-                    if(ch_pos!=-1 && visible[ch_pos]==0 && roach_message.direction[i]!=4){
+                    if(ch_pos!=-1 && bot_data[ch_pos].visible==0 && roach_message.direction[i]!=4){
                         pos_x = bot_data[ch_pos].pos_x;
                         pos_y = bot_data[ch_pos].pos_y;
                         int pos_x0=pos_x, pos_y0 = pos_y;
@@ -202,7 +265,6 @@ int main()
     zmq_close (responder);
     free(lizard_data);
     free(bot_data);
-    free(visible);
 	return 0;
 }
 

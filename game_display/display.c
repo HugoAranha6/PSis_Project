@@ -37,7 +37,6 @@ int main (int argc, char *argv [])
             printDisplay(grid,&game_win,&score_win,n_lizards);
         }
     }
-
     endwin();
     zmq_close (subscriber);
     return 0;

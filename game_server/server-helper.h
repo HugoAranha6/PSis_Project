@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <ncurses.h>
 #include "zhelpers.h"
+#include "pthread.h"
+#include <limits.h>
 
 #define BOARD_SIZE 30
 #define WINDOW_SIZE (BOARD_SIZE+2)
@@ -54,6 +56,7 @@ typedef struct client_info{
     int score;
     int token;
     direction_t direction; //This variable will take up,down,left,right, -1(connect user), -2(roach)
+    int visible;
 } client_info; 
 
 // Bot to Server messages
@@ -508,6 +511,7 @@ client_info* user_connect(client_info* lizard, client_info* grid[][WINDOW_SIZE],
     lizard_update[n_lizard].pos_y = pos_y;
     lizard_update[n_lizard].score = 0;
     lizard_update[n_lizard].direction = -1;
+    lizard_update[n_lizard].visible=time(NULL);
 
     grid[pos_x][pos_y]=&lizard_update[n_lizard];
     
@@ -551,14 +555,10 @@ Output: pointer to an array cointaining connected bot information
 Function handles the addition of new_bots to the game. 
 */
 client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* roach_message,
-                            client_info* grid[][WINDOW_SIZE], void* publisher, int token, int** visible){
+                            client_info* grid[][WINDOW_SIZE], void* publisher, int token){
 
     client_info* bot_update = (client_info*)malloc((n_bots+new_bots)* sizeof(client_info));
-    int* new_visible = realloc(*visible,(n_bots+new_bots)*sizeof(int));
-    if(new_visible==NULL){
-        printf("Memory allocation problem\n");
-        exit(0);
-    }
+
     int pos_x,pos_y;
 
     srand((unsigned int)time(NULL));
@@ -585,6 +585,7 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* r
         bot_update[n_bots+i].ch = (*roach_message).id[i];
         bot_update[n_bots+i].token = (*roach_message).token[i];
         bot_update[n_bots+i].direction = -2;
+        bot_update[n_bots+i].visible = 0;
 
         // Generate positon
         do{
@@ -595,11 +596,8 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* r
         bot_update[n_bots+i].pos_y = pos_y;
 
         grid[pos_x][pos_y] = &bot_update[n_bots+i];
-        new_visible[n_bots+i]=0;
         send_display_bot(bot_update[n_bots+i],0,0,publisher,token);
     }
-    // Visbile vector is changed such that its size is increased
-    *visible=new_visible;
     return bot_update;
 }
 
@@ -612,16 +610,16 @@ Function handles when a roach is eaten. It will go through the connected roaches
 and check if there are roaches in the current lizard position, therefore eaten. visible
 vector will be adjusted when a roach is eaten.
 */
-void eat_roach(client_info roach_info[],int n_roaches,client_info* lizard, int visible[]){
+void eat_roach(client_info roach_info[],int n_roaches,client_info* lizard){
     time_t curr_time=time(NULL);
     for (size_t i = 0; i < n_roaches; i++){
         // Eating condition, roach position same as the lizard
-        if(visible[i]==0 && roach_info[i].pos_x==(*lizard).pos_x && roach_info[i].pos_y==(*lizard).pos_y){
+        if(roach_info[i].visible==0 && roach_info[i].pos_x==(*lizard).pos_x && roach_info[i].pos_y==(*lizard).pos_y){
             (*lizard).score=(*lizard).score+roach_info[i].score;
             // Roach position is set to (0,0) as a virtual placeholder
             roach_info[i].pos_x=0;
             roach_info[i].pos_y=0;
-            visible[i]=curr_time;
+            roach_info[i].visible=curr_time;
         }
     }
 }
@@ -637,14 +635,14 @@ the bot was nto eaten so nothing to do). grid variable is used to place the
 bot in the grid if there is a need to reassign it if the 5s have passed.
 Information is then published according to protocols defined.
 */
-void bot_reconnect(int visible[],int n_bots,client_info bot_data[],client_info* grid[][WINDOW_SIZE],void* publisher, int token){    
+void bot_reconnect(int n_bots,client_info bot_data[],client_info* grid[][WINDOW_SIZE],void* publisher, int token){    
     time_t current_time=time(NULL);
     for (size_t i = 0; i < n_bots; i++)
     {
-        if(visible[i]!=0){
+        if(bot_data[i].visible!=0){
             // Check if 5s have passed
-            if(current_time - visible[i]>=5){
-                visible[i]=0;
+            if(current_time - bot_data[i].visible>=5){
+                bot_data[i].visible=0;
                 int pos_x,pos_y;
                 srand((unsigned int)time(NULL));
                 // Generate random position
@@ -787,3 +785,22 @@ void sync_display(void* responder,client_info* grid[][WINDOW_SIZE]){
     s_send(responder,"update");    
 }
 
+
+void user_timeout(int* n_clients,client_info lizard_data[], client_info* grid[][WINDOW_SIZE],char id[],void* pusher){
+    int curr_time = time(NULL);
+    int flag_upd = 0;
+    for (size_t i = 0; i < *n_clients; i++){
+        if(curr_time - lizard_data[i].visible>15){
+            display_data new_data={.ch=lizard_data[i].ch,.pos_x0=lizard_data[i].pos_x, .pos_y0=lizard_data[i].pos_y,.pos_x1=0,.pos_y1=0};
+            removeClient(lizard_data,n_clients,i,grid,id);
+            i=i-1;
+            
+            s_send(pusher,"lizard");
+            zmq_send(pusher,&new_data,sizeof(new_data),0);
+            flag_upd = 1;
+        }
+    }
+    if (flag_upd==1){
+        s_send(pusher,"update");
+    }
+}

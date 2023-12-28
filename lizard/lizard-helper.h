@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include "zhelpers.h"
+#include <limits.h>
 
 // FOR TESTING PURPOSES WITHOUT ARGC AND ARGV
 //#define server_user_com "tcp://*:5555"
@@ -26,11 +27,7 @@ typedef enum direction_t {
     UP=0,
     DOWN=1,
     LEFT=2,
-    RIGHT=3,
-    HOLD=4,
-    s_lizard=-1,
-    s_roach=-2,
-    s_wasp =-3
+    RIGHT=3
 }direction_t;
 
 // Message type, all types available for users
@@ -239,6 +236,7 @@ void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW**
     signal(SIGINT, (void (*)(int))handle_ctrl_c);
 
     int key;
+    int score_tmp;
     msg_type m_type=1;
     do
     {   
@@ -279,16 +277,25 @@ void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW**
         }
         if(ctrl_c_flag==1){
             m_type=2;
-            *score = user_server_message(requester,*m,m_type);
+            score_tmp = user_server_message(requester,*m,m_type);
         }else if (key != 'x'){
-            *score = user_server_message(requester,*m,m_type);
+            score_tmp = user_server_message(requester,*m,m_type);
         }
         /* Print it on screen */
         wrefresh(*title_win);
         pthread_mutex_unlock(&mutex_print);
+        if(score_tmp==INT_MIN){
+            break;
+        }
+        else{
+            *score = score_tmp;
+        }
     }while(key != 81 && key != 113 && ctrl_c_flag!=1);
 
     endwin();
+    if(score_tmp==INT_MIN){
+        printf("User timeout error!\n");
+    }
 }
 
 // Structure used to store lizard char and score for ordering
