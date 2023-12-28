@@ -157,15 +157,22 @@ void* lizard_thread(void* arg){
             default:
                 break;
             }
+            send_display_update(pusher,0);
         }
         // Display message
         if(strcmp(id,"display")==0){
             // Send the SUB mode token
-            zmq_send(responder_lizard, &token, sizeof(token),ZMQ_SNDMORE);
+            zmq_send(responder, &token, sizeof(token),ZMQ_SNDMORE);
             // Send the current game situation
-            sync_display(responder_lizard,grid);
+            sync_display(responder,grid);
         }
+        
     }
+    
+}
+
+void* bot_thread(void* arg){
+
     
 }
 

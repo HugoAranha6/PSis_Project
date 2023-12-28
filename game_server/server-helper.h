@@ -748,9 +748,9 @@ Output: -
 Function publishes and "update" message
 */
 void send_display_update(void* publisher, int token){
-    char mess[100];
-    sprintf(mess,"%d",token);
-    s_sendmore(publisher,mess);
+    //char mess[100];
+    //sprintf(mess,"%d",token);
+    /* s_sendmore(publisher,mess);*/
     s_send(publisher,"update");
 }
 
