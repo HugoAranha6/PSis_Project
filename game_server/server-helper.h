@@ -22,6 +22,7 @@
 #define server_user_com "tcp://*:5555"
 #define display_server_com "tcp://127.0.0.1:5556"
 #define server_display_com "tcp://*:5556"
+#define server_bot_com "tcp://*:5557"
 
 // Variable to store direction movement, 0-3 UP,DOWN,LEFT,RIGHT, 4 no move
 // -1 connected user, -2 roach
@@ -76,6 +77,12 @@ typedef struct display_data{
     int token;
     direction_t direction;
 }display_data;
+
+pthread_mutex_t mutex_grid=PTHREAD_MUTEX_INITIALIZER;
+
+pthread_cond_t cond_grid = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_pushes_sent = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_pushes_recv = PTHREAD_COND_INITIALIZER;
 
 /*
 NOTE: Communication with client and display procedure.
@@ -156,17 +163,26 @@ Initialize server. Will start the connections to the sockets for REP-REQ
 and PUB-SUB and initializes the usar_char such that the characters are
 set from a-z (lizards)
 -------------------------------------------------------------*/
-int server_initialize (void* context,void **responder, void **publisher, char user_char[]){
+int server_initialize (void* context,void **responder_liz,void** responder_bot,
+                         void **publisher,void **backend, char user_char[]){
     
     // Client - Server
-    *responder = zmq_socket (context, ZMQ_ROUTER);
-    int rc = zmq_bind (*responder, server_user_com);
+    *responder_liz = zmq_socket (context, ZMQ_ROUTER);
+    int rc = zmq_bind (*responder_liz, server_user_com);
+    assert(rc==0);
+
+    // Bot - Server
+    *responder_bot = zmq_socket (context, ZMQ_REP);
+    rc = zmq_bind (*responder_bot, server_bot_com);
     assert(rc==0);
 
     // Server - Display
     *publisher = zmq_socket (context, ZMQ_PUB);
     rc = zmq_bind (*publisher, server_display_com);
     assert(rc==0);
+
+    *backend = zmq_socket (context, ZMQ_DEALER);
+    rc = zmq_bind (*backend, "inproc://back-end");
     for (size_t i = 0; i < MAX_USERS; i++)
     {
         user_char[i]='a'+i;
@@ -535,11 +551,8 @@ void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* publi
     bot.token=bot_data.token;
     bot.score = bot_data.score;
     
-    char token_char[100];
-    sprintf(token_char, "%d", token);
-    s_sendmore(publisher,token_char);
     s_sendmore(publisher, "bot");
-    zmq_send(publisher, &bot, sizeof(display_data), 0);
+    zmq_send(publisher, &bot, sizeof(display_data), ZMQ_SNDMORE);
     
 }
 
@@ -554,7 +567,7 @@ Output: pointer to an array cointaining connected bot information
 Function handles the addition of new_bots to the game. 
 */
 client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* roach_message,
-                            client_info* grid[][WINDOW_SIZE], void* publisher, int token){
+                            client_info* grid[][WINDOW_SIZE], void* socket, int token){
 
     client_info* bot_update = (client_info*)malloc((n_bots+new_bots)* sizeof(client_info));
 
@@ -595,7 +608,7 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* r
         bot_update[n_bots+i].pos_y = pos_y;
 
         grid[pos_x][pos_y] = &bot_update[n_bots+i];
-        send_display_bot(bot_update[n_bots+i],0,0,publisher,token);
+        send_display_bot(bot_update[n_bots+i],0,0,socket,token);
     }
     return bot_update;
 }
@@ -789,7 +802,8 @@ void user_timeout(int* n_clients,client_info lizard_data[], client_info* grid[][
     int curr_time = time(NULL);
     int flag_upd = 0;
     for (size_t i = 0; i < *n_clients; i++){
-        if(curr_time - lizard_data[i].visible>15){
+        if(curr_time - lizard_data[i].visible>60){
+            pthread_mutex_lock(&mutex_grid);
             display_data new_data={.ch=lizard_data[i].ch,.pos_x0=lizard_data[i].pos_x, .pos_y0=lizard_data[i].pos_y,.pos_x1=0,.pos_y1=0};
             removeClient(lizard_data,n_clients,i,grid,id);
             i=i-1;
@@ -801,5 +815,7 @@ void user_timeout(int* n_clients,client_info lizard_data[], client_info* grid[][
     }
     if (flag_upd==1){
         s_send(pusher,"update");
+        pthread_cond_signal(&cond_pushes_recv);
+        pthread_mutex_unlock(&mutex_grid);
     }
 }

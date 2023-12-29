@@ -136,15 +136,7 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
     s_send(*requester,"display");
     zmq_recv(*requester, &token_display, sizeof(token_display),0);
 
-    char display_server_com[50];
-    strcpy(display_server_com, "tcp://");
-    strcat(display_server_com, argv[2]);
-
-    char token_char[100];
-    sprintf(token_char,"%d",token_display);
-
-    zmq_connect (*subscriber, display_server_com);
-    zmq_setsockopt (*subscriber, ZMQ_SUBSCRIBE,token_char, strlen(token_char));
+    
 
     // Initial information pull of current game state
     char id[100]="\0";
@@ -162,6 +154,18 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
             print=1;
         }
     } while (strcmp(id,"update")!=0);
+    
+
+    char display_server_com[50];
+    strcpy(display_server_com, "tcp://");
+    strcat(display_server_com, argv[2]);
+
+    char token_char[100];
+    sprintf(token_char,"%d",token_display);
+
+    zmq_connect (*subscriber, display_server_com);
+    zmq_setsockopt (*subscriber, ZMQ_SUBSCRIBE,token_char, strlen(token_char));
+
     return n_lizards;
 }
 
@@ -283,13 +287,13 @@ void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW**
         }
         /* Print it on screen */
         wrefresh(*title_win);
-        pthread_mutex_unlock(&mutex_print);
         if(score_tmp==INT_MIN){
             break;
         }
         else{
             *score = score_tmp;
         }
+        pthread_mutex_unlock(&mutex_print);
     }while(key != 81 && key != 113 && ctrl_c_flag!=1);
 
     endwin();

@@ -24,26 +24,29 @@ void* input_thread(void* arg){
 void* display_thread(void* arg){
     while(1){
         char *type = s_recv(subscriber);
-        char id[100]="\0";
-        zmq_recv (subscriber, &id, sizeof(id), 0);
-        if(strcmp(id,"lizard")==0){
-            // New lizard information published
-            display_data new_data;
-            zmq_recv (subscriber, &new_data, sizeof(new_data), 0);
-            update_lizard(new_data,grid,&n_lizards);
-            
-        }else if(strcmp(id,"bot")==0){
-            // New bot information published
-            display_data new_data;
-            zmq_recv (subscriber, &new_data, sizeof(new_data), 0);
-            update_bot(new_data,grid);
+        pthread_mutex_lock(&mutex_print);
+        while(1){
+            char id[100]="\0";
+            zmq_recv (subscriber, &id, sizeof(id), 0);
+            if(strcmp(id,"lizard")==0){
+                // New lizard information published
+                display_data new_data;
+                zmq_recv (subscriber, &new_data, sizeof(new_data), 0);
+                update_lizard(new_data,grid,&n_lizards);
+                
+            }else if(strcmp(id,"bot")==0){
+                // New bot information published
+                display_data new_data;
+                zmq_recv (subscriber, &new_data, sizeof(new_data), 0);
+                update_bot(new_data,grid);
 
-        }else if(strcmp(id,"update")==0){
-            // Published order to update display
-            pthread_mutex_lock(&mutex_print);
-            printDisplay(grid,&game_win,&score_win,n_lizards);
-            pthread_mutex_unlock(&mutex_print);
+            }else if(strcmp(id,"update")==0){
+                // Published order to update display
+                printDisplay(grid,&game_win,&score_win,n_lizards);
+                break;
+            }
         }
+        pthread_mutex_unlock(&mutex_print);
     }  
     return NULL;
 }
