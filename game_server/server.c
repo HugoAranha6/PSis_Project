@@ -32,7 +32,9 @@ void* time_thread(void* arg){
 
     while(1){
         // Reassign invisible bots that were eaten
+        pthread_rwlock_wrlock(&rwlock_grid);
         user_timeout(&n_clients,lizard_data,grid,user_char,pusher);
+        pthread_rwlock_unlock(&rwlock_grid);
     }
     return NULL;
 }
@@ -48,8 +50,9 @@ void* display_thread(void* arg){
     sprintf(token_char, "%d", token);
     
     while(1){
-        pthread_mutex_lock(&mutex_grid);
-        pthread_cond_wait(&cond_pushes_recv,&mutex_grid);
+        pthread_mutex_lock(&mutex_display);
+        pthread_cond_wait(&cond_pushes_recv,&mutex_display);
+        pthread_rwlock_rdlock(&rwlock_grid);
         char id[100]="\0";
         s_sendmore(publisher,token_char);
         while(strcmp(id,"update")!=0){
@@ -58,7 +61,8 @@ void* display_thread(void* arg){
                 s_send(publisher, id);
                 // Update server display
                 printGrid(grid,&game_win,&score_win,lizard_data,n_clients);
-                pthread_mutex_unlock(&mutex_grid);
+                pthread_mutex_unlock(&mutex_display);
+                pthread_rwlock_unlock(&rwlock_grid);
             }else{
                 display_data new_data;
                 zmq_recv(sock_recv, &new_data, sizeof(new_data), 0);
@@ -87,7 +91,7 @@ void* lizard_thread(void* arg){
         // Receive message identifier: Client, Bot or Display
         char id[10]="\0";
         zmq_recv (responder, &id,sizeof(id),0);
-        pthread_mutex_lock(&mutex_grid);
+        
         // Client message
         if(strcmp(id,"client")==0){
             msg_type m_type;
@@ -96,30 +100,35 @@ void* lizard_thread(void* arg){
             switch (m_type){
             case CONNECT: 
                 // Lizard connection message
+                pthread_rwlock_wrlock(&rwlock_grid);
                 if (n_clients<MAX_USERS){
                     // Add new lizard to client list and grid if possible
                     lizard_data = user_connect(lizard_data,grid,n_clients,user_char);
-
-                    // Send char and token to user
-                    zmq_send(responder, &lizard_data[n_clients].ch, sizeof(ch), ZMQ_SNDMORE);
-                    zmq_send (responder,&(lizard_data[n_clients].token),sizeof(int),0);
-                    
-                    // Publish information for Displays
-                    send_display_user(lizard_data[n_clients],pusher,0,0,0,0);
                     n_clients++;
+                    // PUSH information for Displays
+                    send_display_user(lizard_data[n_clients-1],pusher,0,0,0,0);
+                    
+                    // Send char and token to user
+                    zmq_send(responder, &lizard_data[n_clients-1].ch, sizeof(ch), ZMQ_SNDMORE);
+                    zmq_send (responder,&(lizard_data[n_clients-1].token),sizeof(int),0);
+                    
                 }else{
                     // Case number of lizards has capped
                     ch = -1;
                     zmq_send(responder, &ch, sizeof(ch), ZMQ_SNDMORE);
                 }
+                pthread_rwlock_unlock(&rwlock_grid);
                 break;
             case MOVE: 
                 client m_move = {.ch=0,.direction=0,.token=0};
                 zmq_recv (responder, &m_move, sizeof(m_move), 0);
                 // Lizard movement message
                 // Find lizard in the stored data based on the char and token received
+                pthread_rwlock_rdlock(&rwlock_grid);
                 ch_pos = find_ch_info(lizard_data, n_clients, m_move.ch,m_move.token);
+                pthread_rwlock_unlock(&rwlock_grid);
                 if(ch_pos != -1){
+                    pthread_rwlock_wrlock(&rwlock_grid);
                     lizard_data[ch_pos].visible=time(NULL);
                     pos_x = lizard_data[ch_pos].pos_x;
                     pos_y = lizard_data[ch_pos].pos_y;
@@ -137,6 +146,7 @@ void* lizard_thread(void* arg){
                         // Publish to Displays
                         send_display_user(lizard_data[ch_pos],pusher,pos_x0,pos_y0,0,0);
                     }
+                    pthread_rwlock_unlock(&rwlock_grid);
                     // Send current score to client
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);
                 }else{
@@ -149,14 +159,20 @@ void* lizard_thread(void* arg){
                 zmq_recv (responder, &m_disc, sizeof(m_disc), 0); 
                 // Lizard disconnect message
                 // Find lizard in the stored data based on the char and token received
+                pthread_rwlock_rdlock(&rwlock_grid);
                 ch_pos = find_ch_info(lizard_data, n_clients, m_disc.ch,m_disc.token);
+                pthread_rwlock_unlock(&rwlock_grid);
                 if(ch_pos!=-1){
                     // Send final score
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);
-                    // Publish to displays
-                    send_display_user(lizard_data[ch_pos],pusher,0,0,1,0);
+                    
                     // Remove lizard from the server data and grid
+                    pthread_rwlock_wrlock(&rwlock_grid);
+                    // PUSH to display thread
+                    send_display_user(lizard_data[ch_pos],pusher,0,0,1,0);
+
                     lizard_data = removeClient(lizard_data,&n_clients,ch_pos,grid,user_char);
+                    pthread_rwlock_unlock(&rwlock_grid);
                 }
                 break;
             default:
@@ -172,7 +188,7 @@ void* lizard_thread(void* arg){
             // Send the current game situation
             sync_display(responder,grid);
         }
-        pthread_mutex_unlock(&mutex_grid);   
+           
     }
     
 }

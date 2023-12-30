@@ -17,6 +17,7 @@
 #define MAX_ROACHES (WINDOW_SIZE-2)*(WINDOW_SIZE-2)/3
 #define MAX_BOT 10
 #define BODY_SIZE 5
+#define TIMEOUT 60
 
 #define user_server_com "tcp://127.0.0.1:5555"
 #define server_user_com "tcp://*:5555"
@@ -78,8 +79,10 @@ typedef struct display_data{
     direction_t direction;
 }display_data;
 
-pthread_mutex_t mutex_grid=PTHREAD_MUTEX_INITIALIZER;
-
+pthread_mutex_t mutex_display=PTHREAD_MUTEX_INITIALIZER;
+pthread_rwlock_t rwlock_grid = PTHREAD_RWLOCK_INITIALIZER;
+pthread_rwlock_t rwlock_lizard = PTHREAD_RWLOCK_INITIALIZER;
+pthread_rwlock_t rwlock_roach = PTHREAD_RWLOCK_INITIALIZER;
 pthread_cond_t cond_grid = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pushes_sent = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pushes_recv = PTHREAD_COND_INITIALIZER;
@@ -802,8 +805,7 @@ void user_timeout(int* n_clients,client_info lizard_data[], client_info* grid[][
     int curr_time = time(NULL);
     int flag_upd = 0;
     for (size_t i = 0; i < *n_clients; i++){
-        if(curr_time - lizard_data[i].visible>60){
-            pthread_mutex_lock(&mutex_grid);
+        if(curr_time - lizard_data[i].visible>TIMEOUT){
             display_data new_data={.ch=lizard_data[i].ch,.pos_x0=lizard_data[i].pos_x, .pos_y0=lizard_data[i].pos_y,.pos_x1=0,.pos_y1=0};
             removeClient(lizard_data,n_clients,i,grid,id);
             i=i-1;
@@ -816,6 +818,6 @@ void user_timeout(int* n_clients,client_info lizard_data[], client_info* grid[][
     if (flag_upd==1){
         s_send(pusher,"update");
         pthread_cond_signal(&cond_pushes_recv);
-        pthread_mutex_unlock(&mutex_grid);
     }
+   
 }
