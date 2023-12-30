@@ -446,8 +446,12 @@ void update_lizard(display_data new_data, display_data grid[][WINDOW_SIZE],int* 
     display_data grid_null={.ch=' ',.direction=-1};
     if(new_data.pos_x0==0 && new_data.pos_y0==0){
         // New lizard connection
-        grid[new_data.pos_x1][new_data.pos_y1]=new_data;
-        *n_lizards=*n_lizards+1;
+        if(grid[new_data.pos_x1][new_data.pos_y1].ch==new_data.ch
+            && grid[new_data.pos_x1][new_data.pos_y1].token==new_data.token){
+        }else{
+            grid[new_data.pos_x1][new_data.pos_y1]=new_data;
+            *n_lizards=*n_lizards+1;
+        }
     }else{
         if(new_data.pos_x1==0 && new_data.pos_y1==0){
             // Lizard disconnect

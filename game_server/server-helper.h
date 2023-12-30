@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <ncurses.h>
 #include "zhelpers.h"
-#include "pthread.h"
+#include <pthread.h>
 #include <limits.h>
 
 #define BOARD_SIZE 30
@@ -34,7 +34,8 @@ typedef enum direction_t {
     RIGHT=3,
     HOLD=4,
     s_lizard=-1,
-    s_roach=-2
+    s_roach=-2,
+    s_wasp = -3
 }direction_t;
 
 typedef enum msg_type {CONNECT, MOVE, DISCONNECT} msg_type;
@@ -340,7 +341,9 @@ void printGrid(client_info* grid[][WINDOW_SIZE],WINDOW** game_win, WINDOW** scor
                         if (i+cnt<WINDOW_SIZE-1) {
                             if(grid[i+cnt][j]==NULL){
                                 wmove(*game_win, i+cnt, j);
-                                if (grid[i][j]->score<50){
+                                if(grid[i][j]->score<0){
+                                    break;
+                                }else if (grid[i][j]->score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
@@ -357,11 +360,13 @@ void printGrid(client_info* grid[][WINDOW_SIZE],WINDOW** game_win, WINDOW** scor
                         if (i-cnt>0) {
                             if(grid[i-cnt][j]==NULL){
                                 wmove(*game_win, i-cnt, j);
-                                if (grid[i][j]->score<50){
+                                if(grid[i][j]->score<0){
+                                    break;
+                                }else if (grid[i][j]->score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
-                                }  
+                                }   
                             }                         
                         }else{
                             break;
@@ -374,7 +379,9 @@ void printGrid(client_info* grid[][WINDOW_SIZE],WINDOW** game_win, WINDOW** scor
                         if (j+cnt<WINDOW_SIZE-1) {
                             if(grid[i][j+cnt]==NULL){
                                 wmove(*game_win, i, j+cnt);
-                                if (grid[i][j]->score<50){
+                                if(grid[i][j]->score<0){
+                                    break;
+                                }else if (grid[i][j]->score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
@@ -391,7 +398,9 @@ void printGrid(client_info* grid[][WINDOW_SIZE],WINDOW** game_win, WINDOW** scor
                         if (j-cnt>0) {
                             if(grid[i][j-cnt]==NULL){
                                 wmove(*game_win, i, j-cnt);
-                                if (grid[i][j]->score<50){
+                                if(grid[i][j]->score<0){
+                                    break;
+                                }else if (grid[i][j]->score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
@@ -408,6 +417,10 @@ void printGrid(client_info* grid[][WINDOW_SIZE],WINDOW** game_win, WINDOW** scor
                 case -2:
                     wmove(*game_win, i, j);
                     waddch(*game_win,(grid[i][j]->score+'0'));
+                    break;
+                case -3:
+                    wmove(*game_win, i, j);
+                    waddch(*game_win,'#');
                     break;
                 default:
                     break;
