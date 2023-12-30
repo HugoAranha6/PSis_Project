@@ -35,6 +35,9 @@ void* time_thread(void* arg){
         pthread_rwlock_wrlock(&rwlock_grid);
         lizard_data = user_timeout(&n_clients,lizard_data,grid,user_char,pusher);
         pthread_rwlock_unlock(&rwlock_grid);
+        pthread_rwlock_wrlock(&rwlock_grid);
+        bot_reconnect(n_bots,bot_data,grid,pusher);
+        pthread_rwlock_unlock(&rwlock_grid);
     }
     return NULL;
 }

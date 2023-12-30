@@ -17,7 +17,7 @@
 #define MAX_ROACHES (WINDOW_SIZE-2)*(WINDOW_SIZE-2)/3
 #define MAX_BOT 10
 #define BODY_SIZE 5
-#define TIMEOUT 20
+#define TIMEOUT 60
 
 #define user_server_com "tcp://127.0.0.1:5555"
 #define server_user_com "tcp://*:5555"
@@ -543,7 +543,7 @@ Input: structure with data of a bot, initial position pos_x0 and pos_y0,
 Output: -
 Function will publish a message that contains information of a bot action
 */
-void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* publisher, int token){
+void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* socket, int token){
     display_data bot;
     bot.ch=bot_data.ch;
     bot.pos_x0=pos_x0;
@@ -554,8 +554,8 @@ void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* publi
     bot.token=bot_data.token;
     bot.score = bot_data.score;
     
-    s_sendmore(publisher, "bot");
-    zmq_send(publisher, &bot, sizeof(display_data), ZMQ_SNDMORE);
+    s_sendmore(socket, "bot");
+    zmq_send(socket, &bot, sizeof(display_data), 0);
     
 }
 
@@ -650,7 +650,7 @@ the bot was nto eaten so nothing to do). grid variable is used to place the
 bot in the grid if there is a need to reassign it if the 5s have passed.
 Information is then published according to protocols defined.
 */
-void bot_reconnect(int n_bots,client_info bot_data[],client_info* grid[][WINDOW_SIZE],void* publisher, int token){    
+void bot_reconnect(int n_bots,client_info bot_data[],client_info* grid[][WINDOW_SIZE],void* publisher){    
     time_t current_time=time(NULL);
     for (size_t i = 0; i < n_bots; i++)
     {
@@ -672,7 +672,7 @@ void bot_reconnect(int n_bots,client_info bot_data[],client_info* grid[][WINDOW_
                 grid[pos_x][pos_y]=&bot_data[i];
 
                 // Publish information
-                send_display_bot(bot_data[i],bot_data[i].pos_x,bot_data[i].pos_y,publisher,token);
+                send_display_bot(bot_data[i],bot_data[i].pos_x,bot_data[i].pos_y,publisher,0);
             }
         }
     }

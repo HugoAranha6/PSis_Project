@@ -74,7 +74,6 @@ int main(int argc, char *argv[])
 
     pthread_join(thread_id[0], NULL);
     pthread_cancel(thread_id[1]);
-    endwin();
     // Display final user score
     printf("Your final score: %d\n",score);
 
