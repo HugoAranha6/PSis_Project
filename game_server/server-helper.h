@@ -17,7 +17,7 @@
 #define MAX_ROACHES (WINDOW_SIZE-2)*(WINDOW_SIZE-2)/3
 #define MAX_BOT 10
 #define BODY_SIZE 5
-#define TIMEOUT 60
+#define TIMEOUT 20
 
 #define user_server_com "tcp://127.0.0.1:5555"
 #define server_user_com "tcp://*:5555"
@@ -801,23 +801,25 @@ void sync_display(void* responder,client_info* grid[][WINDOW_SIZE]){
 }
 
 
-void user_timeout(int* n_clients,client_info lizard_data[], client_info* grid[][WINDOW_SIZE],char id[],void* pusher){
+client_info* user_timeout(int* n_clients,client_info* lizard_data, client_info* grid[][WINDOW_SIZE],char id[],void* pusher){
     int curr_time = time(NULL);
     int flag_upd = 0;
     for (size_t i = 0; i < *n_clients; i++){
         if(curr_time - lizard_data[i].visible>TIMEOUT){
             display_data new_data={.ch=lizard_data[i].ch,.pos_x0=lizard_data[i].pos_x, .pos_y0=lizard_data[i].pos_y,.pos_x1=0,.pos_y1=0};
-            removeClient(lizard_data,n_clients,i,grid,id);
+            lizard_data = removeClient(lizard_data,n_clients,i,grid,id);
             i=i-1;
             
             s_send(pusher,"lizard");
             zmq_send(pusher,&new_data,sizeof(new_data),0);
             flag_upd = 1;
+            
         }
     }
     if (flag_upd==1){
         s_send(pusher,"update");
         pthread_cond_signal(&cond_pushes_recv);
     }
+    return lizard_data;
    
 }
