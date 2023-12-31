@@ -202,6 +202,7 @@ void* bot_thread(void* arg){
     while(1){
         int ch=0, pos_x=0, pos_y=0;
         int ch_pos, new_bots;
+        char* msg = NULL;
         // Receive message identifier: Client, Bot or Display
         char id[10]="\0";
         zmq_recv (responder, &id,sizeof(id),0);
@@ -228,10 +229,9 @@ void* bot_thread(void* arg){
 
                     // Send to client a message with IDs and tokens
                     int n_bytes = connect_repply__get_packed_size(&m_repply);
-                    char* msg = malloc(n_bytes);
+                    msg = malloc(n_bytes);
                     connect_repply__pack(&m_repply,msg);
-                    assert(zmq_send(responder, msg, n_bytes, 0)!=-1);
-                    free(msg);
+                    zmq_send(responder, msg, n_bytes, 0);
                 }else{
                     // Case number of bots requested exceeds the maximum
                     ch=-1;
@@ -284,7 +284,7 @@ void* bot_thread(void* arg){
                 pthread_rwlock_wrlock(&rwlock_grid);
                 for (size_t i = 0; i < m_disc->n_id; i++){
                     // Find the bot to move in the data
-                    ch_pos = find_ch_info(roaches_data,n_roaches,m_movement->id[i],m_movement->token[i]);
+                    ch_pos = find_ch_info(roaches_data,n_roaches,m_disc->id[i],m_disc->token[i]);
                     if(ch_pos!=-1){
                         int pos_x0 = roaches_data[ch_pos].pos_x;
                         int pos_y0 = roaches_data[ch_pos].pos_y;

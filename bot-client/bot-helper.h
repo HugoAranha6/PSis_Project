@@ -163,7 +163,7 @@ void bot_input(void* requester, ConnectRepply* roaches,int number_bots){
         }
         printf("\n");
         int n_bytes = bot_movement__get_packed_size(&m_movement);
-        char *msg = malloc(n_bytes);
+        char *msg = (char*)malloc(n_bytes);
         bot_movement__pack(&m_movement,msg);
         // Server communication according to defined procedure
         assert(s_sendmore(requester,"roaches")!=-1);

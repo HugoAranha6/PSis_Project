@@ -851,6 +851,7 @@ BotConnect* bot_connect_proto(void* responder){
     int n_bytes = zmq_recvmsg(responder,&zmq_msg,0);
     void* data = zmq_msg_data(&zmq_msg);
     m_connect = bot_connect__unpack(NULL,n_bytes,data);
+    zmq_msg_close(&zmq_msg);
     return m_connect;
 }
 
@@ -861,6 +862,7 @@ BotMovement* bot_movement_proto(void* responder){
     int n_bytes = zmq_recvmsg(responder,&zmq_msg,0);
     void* data = zmq_msg_data(&zmq_msg);
     m_movement = bot_movement__unpack(NULL,n_bytes,data);
+    zmq_msg_close(&zmq_msg);
     return m_movement;
 }
 
@@ -871,6 +873,7 @@ BotDisconnect* bot_disc_proto(void* responder){
     int n_bytes = zmq_recvmsg(responder,&zmq_msg,0);
     void* data = zmq_msg_data(&zmq_msg);
     m_disc = bot_disconnect__unpack(NULL,n_bytes,data);
+    zmq_msg_close(&zmq_msg);
     return m_disc;
 }
 
