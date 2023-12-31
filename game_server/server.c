@@ -171,6 +171,9 @@ void* lizard_thread(void* arg){
 
                     lizard_data = removeClient(lizard_data,&n_clients,ch_pos,grid,user_char);
                     pthread_rwlock_unlock(&rwlock_grid);
+                }else{
+                    int time_o=INT_MIN;
+                    zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
                 break;
             default:
@@ -229,9 +232,12 @@ void* bot_thread(void* arg){
 
                     // Send to client a message with IDs and tokens
                     int n_bytes = connect_repply__get_packed_size(&m_repply);
-                    msg = malloc(n_bytes);
+                    do{
+                        msg = calloc(1, n_bytes);
+                    }while(msg==NULL);
                     connect_repply__pack(&m_repply,msg);
                     zmq_send(responder, msg, n_bytes, 0);
+                    free(msg);
                 }else{
                     // Case number of bots requested exceeds the maximum
                     ch=-1;
