@@ -8,7 +8,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}",
-            "args": ["127.0.0.1:5555","127.0.0.1:5556"],
+            "args": ["127.0.0.1:5557","127.0.0.1:5556"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
