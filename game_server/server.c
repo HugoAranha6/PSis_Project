@@ -1,6 +1,7 @@
 #include "server-helper.h"
 
 
+
 // Variable to store grid data, grid composed by pointers, pointing to client_info structures	
 client_info* grid[WINDOW_SIZE][WINDOW_SIZE]={[0 ... WINDOW_SIZE-1] = {[0 ... WINDOW_SIZE-1] = NULL}};
 
@@ -183,7 +184,9 @@ void* lizard_thread(void* arg){
             // Send the SUB mode token
             zmq_send(responder, &token, sizeof(token),ZMQ_SNDMORE);
             // Send the current game situation
+            pthread_rwlock_rdlock(&rwlock_grid);
             sync_display(responder,grid);
+            pthread_rwlock_unlock(&rwlock_grid);
         }
            
     }
@@ -195,36 +198,40 @@ void* bot_thread(void* arg){
     zmq_connect(pusher, "inproc://display_sink");
 
     void* responder = responder_bot;
-
+    
     while(1){
         int ch=0, pos_x=0, pos_y=0;
         int ch_pos, new_bots;
-
         // Receive message identifier: Client, Bot or Display
         char id[10]="\0";
         zmq_recv (responder, &id,sizeof(id),0);
         
         if(strcmp(id,"roaches")==0){
-            bot roach_message;
-            zmq_recv (responder, &roach_message, sizeof(bot), 0);
-            switch (roach_message.type)
+            msg_type m_type;
+            zmq_recv (responder, &m_type, sizeof(m_type), 0);
+            switch (m_type)
             {
             case CONNECT:
                 // Bot connect message
-                zmq_recv(responder, &new_bots,sizeof(int),0);
+                BotConnect* m_connect = bot_connect_proto(responder);
+                new_bots = m_connect->n_score;
                 pthread_rwlock_wrlock(&rwlock_grid);
                 if(new_bots+n_roaches+n_wasps<=MAX_ROACHES){
                     ch = new_bots;
 
                     // Send to client number of bots
                     zmq_send(responder,&(ch),sizeof(int),ZMQ_SNDMORE);
-
+                    ConnectRepply m_repply = CONNECT_REPPLY__INIT;
                     // Add #new_bots new bots to the data structure and grid
-                    roaches_data=bot_connect(n_roaches,roaches_data,new_bots,&roach_message,grid,pusher,0);
+                    roaches_data=bot_connect(n_roaches,roaches_data,new_bots,m_connect,grid,pusher,&m_repply);
                     n_roaches = n_roaches+new_bots;
 
                     // Send to client a message with IDs and tokens
-                    zmq_send(responder,&roach_message,sizeof(bot),0);
+                    int n_bytes = connect_repply__get_packed_size(&m_repply);
+                    char* msg = malloc(n_bytes);
+                    connect_repply__pack(&m_repply,msg);
+                    assert(zmq_send(responder, msg, n_bytes, 0)!=-1);
+                    free(msg);
                 }else{
                     // Case number of bots requested exceeds the maximum
                     ch=-1;
@@ -234,24 +241,24 @@ void* bot_thread(void* arg){
                 break;
             case MOVE:
                 // Bot movement message
-                for (size_t i = 0; i < MAX_BOT && roach_message.id[i]!=0; i++){
+                BotMovement *m_movement = bot_movement_proto(responder);
+                pthread_rwlock_wrlock(&rwlock_grid);
+                for (size_t i = 0; i < m_movement->n_id; i++){
                     // Find the bot to move in the data
-                    pthread_rwlock_rdlock(&rwlock_grid);
-                    ch_pos = find_ch_info(roaches_data,n_roaches,roach_message.id[i],roach_message.token[i]);
-                    pthread_rwlock_unlock(&rwlock_grid);
-                    if(ch_pos!=-1 && roaches_data[ch_pos].visible==0 && roach_message.direction[i]!=4){
-                        pthread_rwlock_wrlock(&rwlock_grid);
+                    ch_pos = find_ch_info(roaches_data,n_roaches,m_movement->id[i],m_movement->token[i]);
+                    if(ch_pos!=-1 && roaches_data[ch_pos].visible==0 && m_movement->movement[i]!=4){
+                        
                         pos_x = roaches_data[ch_pos].pos_x;
                         pos_y = roaches_data[ch_pos].pos_y;
                         int pos_x0=pos_x, pos_y0 = pos_y;
 
                         // Calculate new position
-                        new_position(&pos_x, &pos_y, roach_message.direction[i]);
+                        new_position(&pos_x, &pos_y, m_movement->movement[i]);
                         // Check grid availability for movement
                         int* check = checkGrid_roach(grid,&pos_x,&pos_y,&roaches_data[ch_pos]);
 
                         // Publish information in SUB mode
-                        send_display_bot(roaches_data[ch_pos],pos_x0,pos_y0,pusher,0);
+                        send_display_bot(roaches_data[ch_pos],pos_x0,pos_y0,pusher);
 
                         // Check for roaches that were possibly hidden underneath the moved one
                         if(check[0]!=0 && check[1]!=0){
@@ -260,16 +267,42 @@ void* bot_thread(void* arg){
                                     grid[check[0]][check[1]]=&roaches_data[i];
 
                                     // Publish message if an hidden bot was found
-                                    send_display_bot(roaches_data[i],pos_x0,pos_y0,pusher,0);
+                                    send_display_bot(roaches_data[i],pos_x0,pos_y0,pusher);
                                     break;
                                 }
                             } 
                         }
-                        pthread_rwlock_unlock(&rwlock_grid);
                     }
                 }
+                pthread_rwlock_unlock(&rwlock_grid);
                 // Send to client a check up message
                 int check = 1;
+                zmq_send(responder,&check,sizeof(int),0);
+                break;
+            case DISCONNECT:
+                BotDisconnect* m_disc = bot_disc_proto(responder);
+                pthread_rwlock_wrlock(&rwlock_grid);
+                for (size_t i = 0; i < m_disc->n_id; i++){
+                    // Find the bot to move in the data
+                    ch_pos = find_ch_info(roaches_data,n_roaches,m_movement->id[i],m_movement->token[i]);
+                    if(ch_pos!=-1){
+                        int pos_x0 = roaches_data[ch_pos].pos_x;
+                        int pos_y0 = roaches_data[ch_pos].pos_y;
+                        send_display_bot(roaches_data[ch_pos],WINDOW_SIZE,WINDOW_SIZE,pusher);
+                        roaches_data = removeRoach(roaches_data,&n_roaches,ch_pos,grid);
+
+                        for (size_t i = 0; i < n_roaches; i++){
+                            if(roaches_data[i].pos_x==pos_y0 && roaches_data[i].pos_y==pos_x0){
+                                grid[pos_x0][pos_x0]=&roaches_data[i];
+                                // Publish message if an hidden bot was found
+                                send_display_bot(roaches_data[i],pos_x0,pos_y0,pusher);
+                                break;
+                            }
+                        } 
+                    }
+                }
+                pthread_rwlock_unlock(&rwlock_grid);
+                check = 1;
                 zmq_send(responder,&check,sizeof(int),0);
                 break;
             default:
@@ -294,7 +327,8 @@ int main()
     int token = server_initialize(context,&responder_lizard,&responder_bot,&publisher,&backend,user_char);
     
 	server_interface(&title_win,&game_win,&score_win);
-
+    lizard_data = malloc(0);
+    roaches_data = malloc(0);
     pthread_t thread_id[7];
     pthread_create(&thread_id[0],NULL,time_thread,NULL);   
     pthread_create(&thread_id[1],NULL,display_thread,(void *)&token);

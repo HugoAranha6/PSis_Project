@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <ncurses.h>
 #include "zhelpers.h"
+#include "bot.pb-c.h"
 #include <pthread.h>
 #include <limits.h>
 
@@ -244,6 +245,7 @@ client_info* removeClient(client_info arr[], int *size, int indexToRemove,client
     client_info* lizard_update = (client_info*)malloc((*size-1)* sizeof(client_info));
     // Case of bugs, index outside boundaries
     if (indexToRemove < 0 || indexToRemove >= *size) {
+        free(lizard_update);
         return arr;
     }
     client_info tmp;
@@ -556,7 +558,7 @@ Input: structure with data of a bot, initial position pos_x0 and pos_y0,
 Output: -
 Function will publish a message that contains information of a bot action
 */
-void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* socket, int token){
+void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* socket){
     display_data bot;
     bot.ch=bot_data.ch;
     bot.pos_x0=pos_x0;
@@ -582,12 +584,17 @@ Input: n_bots number of connected bots, pointer to array bot_data,
 Output: pointer to an array cointaining connected bot information
 Function handles the addition of new_bots to the game. 
 */
-client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* roach_message,
-                            client_info* grid[][WINDOW_SIZE], void* socket, int token){
+client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, BotConnect* m_connect,
+                            client_info* grid[][WINDOW_SIZE], void* socket, ConnectRepply* m_repply){
 
     client_info* bot_update = (client_info*)malloc((n_bots+new_bots)* sizeof(client_info));
 
     int pos_x,pos_y;
+
+    (*m_repply).n_id=m_connect->n_score;
+    (*m_repply).n_token=m_connect->n_score;
+    (*m_repply).id = malloc (sizeof(uint32_t) * n_bots);
+    (*m_repply).token = malloc (sizeof(uint32_t) * n_bots);
 
     srand((unsigned int)time(NULL));
 
@@ -604,14 +611,14 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* r
     // For each new bot, generate tokens ids and so on.
     for (size_t i = 0; i < new_bots; i++){
         // Bot score on connection is on roach_message id
-        bot_update[n_bots+i].score=(*roach_message).id[i];
+        bot_update[n_bots+i].score=m_connect->score[i];
 
         // Generate id and token
-        (*roach_message).id[i]=5000+n_bots+i;
-        (*roach_message).token[i]=rand();
+        (*m_repply).id[i]=5000+n_bots+i;
+        (*m_repply).token[i]=rand();
 
-        bot_update[n_bots+i].ch = (*roach_message).id[i];
-        bot_update[n_bots+i].token = (*roach_message).token[i];
+        bot_update[n_bots+i].ch = (*m_repply).id[i];
+        bot_update[n_bots+i].token = (*m_repply).token[i];
         bot_update[n_bots+i].direction = -2;
         bot_update[n_bots+i].visible = 0;
 
@@ -624,7 +631,7 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, bot* r
         bot_update[n_bots+i].pos_y = pos_y;
 
         grid[pos_x][pos_y] = &bot_update[n_bots+i];
-        send_display_bot(bot_update[n_bots+i],0,0,socket,token);
+        send_display_bot(bot_update[n_bots+i],0,0,socket);
     }
     return bot_update;
 }
@@ -685,7 +692,7 @@ void bot_reconnect(int n_bots,client_info bot_data[],client_info* grid[][WINDOW_
                 grid[pos_x][pos_y]=&bot_data[i];
 
                 // Publish information
-                send_display_bot(bot_data[i],bot_data[i].pos_x,bot_data[i].pos_y,publisher,0);
+                send_display_bot(bot_data[i],bot_data[i].pos_x,bot_data[i].pos_y,publisher);
             }
         }
     }
@@ -835,4 +842,63 @@ client_info* user_timeout(int* n_clients,client_info* lizard_data, client_info* 
     }
     return lizard_data;
    
+}
+
+BotConnect* bot_connect_proto(void* responder){
+    BotConnect* m_connect;
+    zmq_msg_t zmq_msg;
+    zmq_msg_init(&zmq_msg);
+    int n_bytes = zmq_recvmsg(responder,&zmq_msg,0);
+    void* data = zmq_msg_data(&zmq_msg);
+    m_connect = bot_connect__unpack(NULL,n_bytes,data);
+    return m_connect;
+}
+
+BotMovement* bot_movement_proto(void* responder){
+    BotMovement* m_movement;
+    zmq_msg_t zmq_msg;
+    zmq_msg_init(&zmq_msg);
+    int n_bytes = zmq_recvmsg(responder,&zmq_msg,0);
+    void* data = zmq_msg_data(&zmq_msg);
+    m_movement = bot_movement__unpack(NULL,n_bytes,data);
+    return m_movement;
+}
+
+BotDisconnect* bot_disc_proto(void* responder){
+    BotDisconnect* m_disc;
+    zmq_msg_t zmq_msg;
+    zmq_msg_init(&zmq_msg);
+    int n_bytes = zmq_recvmsg(responder,&zmq_msg,0);
+    void* data = zmq_msg_data(&zmq_msg);
+    m_disc = bot_disconnect__unpack(NULL,n_bytes,data);
+    return m_disc;
+}
+
+client_info* removeRoach(client_info arr[], int *size, int indexToRemove,client_info* grid[][WINDOW_SIZE]){
+    client_info* roach_update = (client_info*)malloc((*size-1)* sizeof(client_info));
+    // Case of bugs, index outside boundaries
+    if (indexToRemove < 0 || indexToRemove >= *size) {
+        free(roach_update);
+        return arr;
+    }
+    client_info tmp;
+    tmp = arr[indexToRemove];
+    // Shift elements one position backward starting from the specified index
+    int j=0;
+    for (int i = 0; i < *size; ++i) {
+        if(i==indexToRemove){
+        }else{
+            roach_update[j] = arr[i];
+            if(grid[roach_update[j].pos_x][roach_update[j].pos_y]->ch==arr[i].ch && grid[arr[i].pos_x][arr[i].pos_y]->token==arr[i].token){
+                grid[roach_update[j].pos_x][roach_update[j].pos_y]=&roach_update[j];
+            }
+            j++;
+        }
+    }
+    grid[tmp.pos_x][tmp.pos_y]=NULL;
+
+    // Decrease the size of the array
+    (*size)--;
+    free(arr);
+    return roach_update;
 }
