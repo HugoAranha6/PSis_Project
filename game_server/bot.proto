@@ -12,24 +12,24 @@ enum direction_move{
 
 // MESSAGES SENT BY BOT CLIENT
 message bot_connect{
-    repeated uint32 score = 1;
+    repeated int32 score = 1;
 }
 
 message bot_movement{
-    repeated uint32 id = 1;
-    repeated uint32 token = 2;
+    repeated int32 id = 1;
+    repeated int32 token = 2;
     repeated direction_move movement = 3;
 }
 
 message bot_disconnect{
-    repeated uint32 id = 1;
-    repeated uint32 token = 2;
+    repeated int32 id = 1;
+    repeated int32 token = 2;
 }
 
 // MESSAGES SENT BY THE SERVER
 message connect_repply{
-    repeated uint32 id = 1;
-    repeated uint32 token = 2;
+    repeated int32 id = 1;
+    repeated int32 token = 2;
 }
 
 

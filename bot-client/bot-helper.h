@@ -153,15 +153,17 @@ void bot_input(void* requester, ConnectRepply* roaches,int number_bots){
         //random direction assignment for each controlled bot 
         sleep(1); 
         pthread_mutex_lock(&requester_mutex);
+        printf("                 \r");
         if(ctrl_c_pressed==1){
             pthread_mutex_unlock(&requester_mutex);
             break;
         }
+        
         for(size_t i=0; i<number_bots; i++){
             m_movement.movement[i]=rand()%5;
             printf("%d,",m_movement.movement[i]);
         }
-        printf("\n");
+        
         int n_bytes = bot_movement__get_packed_size(&m_movement);
         char *msg = (char*)malloc(n_bytes);
         bot_movement__pack(&m_movement,msg);

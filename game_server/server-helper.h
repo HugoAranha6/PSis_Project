@@ -83,8 +83,6 @@ typedef struct display_data{
 
 pthread_mutex_t mutex_display=PTHREAD_MUTEX_INITIALIZER;
 pthread_rwlock_t rwlock_grid = PTHREAD_RWLOCK_INITIALIZER;
-pthread_rwlock_t rwlock_lizard = PTHREAD_RWLOCK_INITIALIZER;
-pthread_rwlock_t rwlock_roach = PTHREAD_RWLOCK_INITIALIZER;
 pthread_cond_t cond_grid = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pushes_sent = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pushes_recv = PTHREAD_COND_INITIALIZER;
@@ -585,16 +583,13 @@ Output: pointer to an array cointaining connected bot information
 Function handles the addition of new_bots to the game. 
 */
 client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, BotConnect* m_connect,
-                            client_info* grid[][WINDOW_SIZE], void* socket, ConnectRepply* m_repply){
+                            client_info* grid[][WINDOW_SIZE], void* socket){
 
     client_info* bot_update = (client_info*)malloc((n_bots+new_bots)* sizeof(client_info));
 
     int pos_x,pos_y;
 
-    (*m_repply).n_id=m_connect->n_score;
-    (*m_repply).n_token=m_connect->n_score;
-    (*m_repply).id = malloc (sizeof(uint32_t) * n_bots);
-    (*m_repply).token = malloc (sizeof(uint32_t) * n_bots);
+
 
     srand((unsigned int)time(NULL));
 
@@ -614,11 +609,8 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, BotCon
         bot_update[n_bots+i].score=m_connect->score[i];
 
         // Generate id and token
-        (*m_repply).id[i]=5000+n_bots+i;
-        (*m_repply).token[i]=rand();
-
-        bot_update[n_bots+i].ch = (*m_repply).id[i];
-        bot_update[n_bots+i].token = (*m_repply).token[i];
+        bot_update[n_bots+i].ch = 5000+n_bots+i;;
+        bot_update[n_bots+i].token = rand();
         bot_update[n_bots+i].direction = -2;
         bot_update[n_bots+i].visible = 0;
 

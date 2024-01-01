@@ -52,9 +52,9 @@ struct  _BotMovement
 {
   ProtobufCMessage base;
   size_t n_id;
-  uint32_t *id;
+  int32_t *id;
   size_t n_token;
-  uint32_t *token;
+  int32_t *token;
   size_t n_movement;
   DirectionMove *movement;
 };
@@ -67,9 +67,9 @@ struct  _BotDisconnect
 {
   ProtobufCMessage base;
   size_t n_id;
-  uint32_t *id;
+  int32_t *id;
   size_t n_token;
-  uint32_t *token;
+  int32_t *token;
 };
 #define BOT_DISCONNECT__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&bot_disconnect__descriptor) \
@@ -83,9 +83,9 @@ struct  _ConnectRepply
 {
   ProtobufCMessage base;
   size_t n_id;
-  uint32_t *id;
+  int32_t *id;
   size_t n_token;
-  uint32_t *token;
+  int32_t *token;
 };
 #define CONNECT_REPPLY__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&connect_repply__descriptor) \

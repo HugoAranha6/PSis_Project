@@ -204,7 +204,7 @@ void* bot_thread(void* arg){
     
     while(1){
         int ch=0, pos_x=0, pos_y=0;
-        int ch_pos, new_bots;
+        int ch_pos, new_bots, n_bytes;
         char* msg = NULL;
         // Receive message identifier: Client, Bot or Display
         char id[10]="\0";
@@ -226,12 +226,21 @@ void* bot_thread(void* arg){
                     // Send to client number of bots
                     zmq_send(responder,&(ch),sizeof(int),ZMQ_SNDMORE);
                     ConnectRepply m_repply = CONNECT_REPPLY__INIT;
+                    m_repply.n_id = new_bots;
+                    m_repply.n_token = new_bots;
+                    m_repply.id = malloc (sizeof(int32_t) * new_bots);
+                    m_repply.token = malloc (sizeof(int32_t) * new_bots);
                     // Add #new_bots new bots to the data structure and grid
-                    roaches_data=bot_connect(n_roaches,roaches_data,new_bots,m_connect,grid,pusher,&m_repply);
+                    roaches_data=bot_connect(n_roaches,roaches_data,new_bots,m_connect,grid,pusher);
+                    for (size_t i = 0; i < new_bots; i++){
+                        m_repply.id[i] = roaches_data[i+n_roaches].ch;
+                        m_repply.token[i] = roaches_data[i+n_roaches].token;
+                    }
+                    
                     n_roaches = n_roaches+new_bots;
 
                     // Send to client a message with IDs and tokens
-                    int n_bytes = connect_repply__get_packed_size(&m_repply);
+                    n_bytes = connect_repply__get_packed_size(&m_repply);
                     do{
                         msg = calloc(1, n_bytes);
                     }while(msg==NULL);
