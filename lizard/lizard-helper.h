@@ -27,7 +27,11 @@ typedef enum direction_t {
     UP=0,
     DOWN=1,
     LEFT=2,
-    RIGHT=3
+    RIGHT=3,
+    HOLD=4,
+    s_lizard=-1,
+    s_roach=-2,
+    s_wasp = -3
 }direction_t;
 
 // Message type, all types available for users
