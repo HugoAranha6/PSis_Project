@@ -117,7 +117,7 @@ void* lizard_thread(void* arg){
                 }
                 pthread_rwlock_unlock(&rwlock_grid);
                 break;
-            case MOVE: 
+            case MOVE: {
                 client m_move = {.ch=0,.direction=0,.token=0};
                 zmq_recv (responder, &m_move, sizeof(m_move), 0);
                 // Lizard movement message
@@ -152,7 +152,8 @@ void* lizard_thread(void* arg){
                     zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
                 break;
-            case DISCONNECT:
+            }
+            case DISCONNECT:{
                 client_disconnect m_disc;
                 zmq_recv (responder, &m_disc, sizeof(m_disc), 0); 
                 // Lizard disconnect message
@@ -176,6 +177,7 @@ void* lizard_thread(void* arg){
                     zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
                 break;
+            }
             default:
                 break;
             }
@@ -215,7 +217,7 @@ void* bot_thread(void* arg){
             zmq_recv (responder, &m_type, sizeof(m_type), 0);
             switch (m_type)
             {
-            case CONNECT:
+            case CONNECT:{
                 // Bot connect message
                 BotConnect* m_connect = bot_connect_proto(responder);
                 new_bots = m_connect->n_score;
@@ -254,7 +256,8 @@ void* bot_thread(void* arg){
                 }
                 pthread_rwlock_unlock(&rwlock_grid);
                 break;
-            case MOVE:
+            }
+            case MOVE:{
                 // Bot movement message
                 BotMovement *m_movement = bot_movement_proto(responder);
                 pthread_rwlock_wrlock(&rwlock_grid);
@@ -294,7 +297,8 @@ void* bot_thread(void* arg){
                 int check = 1;
                 zmq_send(responder,&check,sizeof(int),0);
                 break;
-            case DISCONNECT:
+            }
+            case DISCONNECT:{
                 BotDisconnect* m_disc = bot_disc_proto(responder);
                 pthread_rwlock_wrlock(&rwlock_grid);
                 for (size_t i = 0; i < m_disc->n_id; i++){
@@ -317,9 +321,10 @@ void* bot_thread(void* arg){
                     }
                 }
                 pthread_rwlock_unlock(&rwlock_grid);
-                check = 1;
+                int check = 1;
                 zmq_send(responder,&check,sizeof(int),0);
                 break;
+            }
             default:
                 break;
             }
