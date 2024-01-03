@@ -149,6 +149,8 @@ void* lizard_thread(void* arg){
                         }
                         // Publish to Displays
                         send_display_user(lizard_data[ch_pos],pusher,pos_x0,pos_y0,0);
+                    }else{
+                        send_display_user(lizard_data[ch_pos],pusher,pos_x,pos_y,0);
                     }
                     pthread_rwlock_unlock(&rwlock_grid);
                     // Send current score to client

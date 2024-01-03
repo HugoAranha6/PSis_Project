@@ -241,7 +241,7 @@ to the lizard current score
 */
 void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** score_win){
     
-    signal(SIGINT, (void (*)(int))handle_ctrl_c);
+    //signal(SIGINT, (void (*)(int))handle_ctrl_c);
 
     int key;
     int score_tmp;
@@ -496,6 +496,8 @@ void update_bot(display_data new_data, display_data grid[][WINDOW_SIZE]){
     if(new_data.pos_x0==0 && new_data.pos_y0==0){
         // Bot connect
         grid[new_data.pos_x1][new_data.pos_y1]=new_data;
+    }else if(new_data.pos_x0==WINDOW_SIZE && new_data.pos_y0==WINDOW_SIZE){
+        grid[new_data.pos_x1][new_data.pos_y1]=grid_null;
     }else if(grid[new_data.pos_x0][new_data.pos_y0].ch==new_data.ch && 
                 grid[new_data.pos_x0][new_data.pos_y0].token == new_data.token){
             // Non-hidden bot movement

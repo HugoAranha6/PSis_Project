@@ -609,7 +609,12 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, BotCon
         bot_update[n_bots+i].score=m_connect->score[i];
 
         // Generate id and token
-        bot_update[n_bots+i].ch = 5000+n_bots+i;;
+        if (n_bots==0){
+            bot_update[n_bots+i].ch = 5000+n_bots+i;
+        }else{
+            bot_update[n_bots+i].ch = bot_update[n_bots-1].ch+i;
+        }
+        
         bot_update[n_bots+i].token = rand();
         bot_update[n_bots+i].direction = -2;
         bot_update[n_bots+i].visible = 0;
@@ -889,7 +894,7 @@ client_info* removeRoach(client_info arr[], int *size, int indexToRemove,client_
         if(i==indexToRemove){
         }else{
             roach_update[j] = arr[i];
-            if(grid[roach_update[j].pos_x][roach_update[j].pos_y]->ch==arr[i].ch && grid[arr[i].pos_x][arr[i].pos_y]->token==arr[i].token){
+            if(roach_update[j].visible==0 && grid[roach_update[j].pos_x][roach_update[j].pos_y]->ch==arr[i].ch && grid[arr[i].pos_x][arr[i].pos_y]->token==arr[i].token){
                 grid[roach_update[j].pos_x][roach_update[j].pos_y]=&roach_update[j];
             }
             j++;

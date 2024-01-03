@@ -3,8 +3,6 @@ all:
 	cd lizard && $(MAKE)
 	cd game_server && $(MAKE)
 	cd wasp-client && $(MAKE) 
-debug: all
-	gdb ./roaches-client --args 127.0.0.1:5557
 
 clean:
 	cd lizard && $(MAKE) clean
