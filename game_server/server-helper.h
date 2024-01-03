@@ -563,7 +563,7 @@ void send_display_bot( client_info bot_data, int pos_x0, int pos_y0, void* socke
     bot.pos_y0=pos_y0;
     bot.pos_x1=bot_data.pos_x;
     bot.pos_y1=bot_data.pos_y;
-    bot.direction=-2;
+    bot.direction=bot_data.direction;
     bot.token=bot_data.token;
     bot.score = bot_data.score;
     
@@ -741,7 +741,7 @@ int checkGrid_lizard(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_in
     int check_roach = 0;
     if(grid[*x][*y] != NULL){
         // Case grid entry is a (non-self) lizard
-        if(grid[*x][*y]->direction!=-2){
+        if(grid[*x][*y]->direction!=-2 && grid[*x][*y]->direction!=-3){
             if(grid[*x][*y]->ch!=client.ch){
                 int tmp= (grid[*x][*y]->score+grid[client.pos_x][client.pos_y]->score)/2;
                 // Divide scores
@@ -752,8 +752,13 @@ int checkGrid_lizard(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_in
                     send_display_user(*(grid[*x][*y]),publisher,*x,*y,0);
                 }
             }
+
+            // Case the Lizard encounters a Wasp
+        }else if(grid[*x][*y]->direction==-3){
+             grid[client.pos_x][client.pos_y]->score= grid[client.pos_x][client.pos_y]->score-10;
+              send_display_user(*(grid[client.pos_x][client.pos_y]),publisher,client.pos_x,client.pos_y,0);
         }else{
-        // Case future grid entry is a roach
+        // Case future grid entry is a Roach
             grid[*x][*y] = grid[client.pos_x][client.pos_y];
             grid[*x][*y]->pos_x=*x;
             grid[*x][*y]->pos_y=*y;
