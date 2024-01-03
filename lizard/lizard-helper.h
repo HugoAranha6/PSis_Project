@@ -420,6 +420,10 @@ void printDisplay( display_data display[][WINDOW_SIZE],WINDOW** game_win,WINDOW*
                     wmove(*game_win, i, j);
                     waddch(*game_win,(display[i][j].score+'0'));
                     break;
+                case -3:
+                    wmove(*game_win, i, j);
+                    waddch(*game_win,'#');
+                    break;
                 default:
                     break;
                 }

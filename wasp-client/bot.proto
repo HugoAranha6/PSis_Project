@@ -1,0 +1,35 @@
+// https://protobuf.dev/programming-guides/proto3/
+
+syntax = "proto2";
+
+enum direction_move{
+  UP=0;
+  DOWN = 1;
+  LEFT = 2;
+  RIGHT = 3;
+  HOLD = 4;
+}
+
+// MESSAGES SENT BY BOT CLIENT
+message bot_connect{
+    repeated uint32 score = 1;
+}
+
+message bot_movement{
+    repeated int32 id = 1;
+    repeated int32 token = 2;
+    repeated direction_move movement = 3;
+}
+
+message bot_disconnect{
+    repeated int32 id = 1;
+    repeated int32 token = 2;
+}
+
+// MESSAGES SENT BY THE SERVER
+message connect_repply{
+    repeated int32 id = 1;
+    repeated int32 token = 2;
+}
+
+

@@ -29,6 +29,11 @@
             "cwd": "/home/hugoaranha6/psis/Project_Shared",
             "binaryPath": "/home/hugoaranha6/psis/Project_Shared/roaches-client",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/hugoaranha6/psis/Project_Shared",
+            "binaryPath": "/home/hugoaranha6/psis/Project_Shared/lizardsNroaches",
+            "binaryArgs": []
         }
     ]
 }

@@ -704,7 +704,7 @@ and current position comes in lizard data.
 If type is 0, then x0 and y0 are the initial positions of the lizard and
 future positons comes in lizard_data.
 */
-void send_display_user(client_info lizard_data, void* publisher, int x0, int y0,int type,int token){
+void send_display_user(client_info lizard_data, void* publisher, int x0, int y0,int type){
     
     display_data lizard_update={.ch=lizard_data.ch , .score=lizard_data.score,
                     .pos_x0=x0, .pos_y0=y0, .pos_x1=lizard_data.pos_x,
@@ -749,7 +749,7 @@ int checkGrid_lizard(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_in
                     grid[*x][*y]->score = tmp;
                     grid[client.pos_x][client.pos_y]->score = tmp;
                     // If there was a collision publish information of the hit lizard
-                    send_display_user(*(grid[*x][*y]),publisher,*x,*y,0,0);
+                    send_display_user(*(grid[*x][*y]),publisher,*x,*y,0);
                 }
             }
         }else{
@@ -896,4 +896,84 @@ client_info* removeRoach(client_info arr[], int *size, int indexToRemove,client_
     (*size)--;
     free(arr);
     return roach_update;
+}
+
+
+
+client_info* wasp_connect(int n_bots, client_info* bot_data, int new_bots, client_info* grid[][WINDOW_SIZE], void* socket){
+
+    client_info* wasp_update = (client_info*)malloc((n_bots+new_bots)* sizeof(client_info));
+
+    int pos_x,pos_y;
+
+
+
+    srand((unsigned int)time(NULL));
+
+    // Add previous information to the new bot information array
+    for (size_t i = 0; i < n_bots; i++){
+        wasp_update[i]=bot_data[i];
+        if(grid[wasp_update[i].pos_x][wasp_update[i].pos_y]!=NULL){
+            if(grid[wasp_update[i].pos_x][wasp_update[i].pos_y]->ch==wasp_update[i].ch){
+                grid[wasp_update[i].pos_x][wasp_update[i].pos_y]=&wasp_update[i];
+            }
+        }
+    }
+    
+    // For each new bot, generate tokens ids and so on.
+    for (size_t i = 0; i < new_bots; i++){
+        // Generate id and token
+        if (n_bots==0){
+            wasp_update[n_bots+i].ch = 3000+n_bots+i;
+        }else{
+            wasp_update[n_bots+i].ch = wasp_update[n_bots-1].ch+i;
+        }
+        wasp_update[n_bots+i].token = rand();
+        wasp_update[n_bots+i].direction = -3;
+        wasp_update[n_bots+i].visible = 0;
+
+        // Generate positon
+        do{
+            pos_x = 1 + rand()%(WINDOW_SIZE-2);
+            pos_y = 1 + rand()%(WINDOW_SIZE-2);
+        } while (grid[pos_x][pos_y]!=NULL);
+        wasp_update[n_bots+i].pos_x = pos_x;
+        wasp_update[n_bots+i].pos_y = pos_y;
+
+        grid[pos_x][pos_y] = &wasp_update[n_bots+i];
+        send_display_bot(wasp_update[n_bots+i],0,0,socket);
+    }
+    return wasp_update;
+}
+
+
+
+/*
+Input: grid information vector, pointers to integers of the future
+       position (x,y) and a pointer to the roach to move
+Output: an array of size 2, of the position that becomes available
+        in the grid if the roach moves
+Function that checks if the given roach movement is possible or not
+possible, if there is a lizard in new position, and returns the position
+that just became free if there is a movement 
+*/
+void checkGrid_wasp(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_info client, void* publisher) {
+
+
+    if(grid[*x][*y] != NULL){
+        // Case grid entry is a wasp
+        if(grid[*x][*y]->direction ==-3){
+        }else if(grid[*x][*y]->direction ==-2){// next position is a roach
+        }else{
+            grid[*x][*y]->score = grid[*x][*y]->score -10;
+            send_display_user(*(grid[*x][*y]),publisher,*x,*y,0);
+        }
+
+    }else{
+        grid[*x][*y] = grid[client.pos_x][client.pos_y];
+        grid[*x][*y]->pos_x=*x;
+        grid[*x][*y]->pos_y=*y;
+        grid[client.pos_x][client.pos_y]=NULL;
+
+    }
 }

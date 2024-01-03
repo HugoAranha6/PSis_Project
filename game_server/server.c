@@ -2,6 +2,7 @@
 
 
 
+
 // Variable to store grid data, grid composed by pointers, pointing to client_info structures	
 client_info* grid[WINDOW_SIZE][WINDOW_SIZE]={[0 ... WINDOW_SIZE-1] = {[0 ... WINDOW_SIZE-1] = NULL}};
 
@@ -104,7 +105,7 @@ void* lizard_thread(void* arg){
                     lizard_data = user_connect(lizard_data,grid,n_clients,user_char);
                     n_clients++;
                     // PUSH information for Displays
-                    send_display_user(lizard_data[n_clients-1],pusher,0,0,0,0);
+                    send_display_user(lizard_data[n_clients-1],pusher,0,0,0);
                     
                     // Send char and token to user
                     zmq_send(responder, &lizard_data[n_clients-1].ch, sizeof(ch), ZMQ_SNDMORE);
@@ -117,8 +118,13 @@ void* lizard_thread(void* arg){
                 }
                 pthread_rwlock_unlock(&rwlock_grid);
                 break;
-            case MOVE: {
-                client m_move = {.ch=0,.direction=0,.token=0};
+            case MOVE:{
+                // client m_move = {.ch=0,.direction=0,.token=0};
+                client m_move;
+                m_move.ch = 0;
+                m_move.direction = 0;
+                m_move.token = 0;
+
                 zmq_recv (responder, &m_move, sizeof(m_move), 0);
                 // Lizard movement message
                 // Find lizard in the stored data based on the char and token received
@@ -142,7 +148,7 @@ void* lizard_thread(void* arg){
                             eat_roach(roaches_data,n_roaches,&lizard_data[ch_pos]);    
                         }
                         // Publish to Displays
-                        send_display_user(lizard_data[ch_pos],pusher,pos_x0,pos_y0,0,0);
+                        send_display_user(lizard_data[ch_pos],pusher,pos_x0,pos_y0,0);
                     }
                     pthread_rwlock_unlock(&rwlock_grid);
                     // Send current score to client
@@ -151,8 +157,7 @@ void* lizard_thread(void* arg){
                     int time_o=INT_MIN;
                     zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
-                break;
-            }
+                break;}
             case DISCONNECT:{
                 client_disconnect m_disc;
                 zmq_recv (responder, &m_disc, sizeof(m_disc), 0); 
@@ -168,7 +173,7 @@ void* lizard_thread(void* arg){
                     // Remove lizard from the server data and grid
                     pthread_rwlock_wrlock(&rwlock_grid);
                     // PUSH to display thread
-                    send_display_user(lizard_data[ch_pos],pusher,0,0,1,0);
+                    send_display_user(lizard_data[ch_pos],pusher,0,0,1);
 
                     lizard_data = removeClient(lizard_data,&n_clients,ch_pos,grid,user_char);
                     pthread_rwlock_unlock(&rwlock_grid);
@@ -176,8 +181,7 @@ void* lizard_thread(void* arg){
                     int time_o=INT_MIN;
                     zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
-                break;
-            }
+                break;}
             default:
                 break;
             }
@@ -255,8 +259,7 @@ void* bot_thread(void* arg){
                     zmq_send(responder,&ch,sizeof(int),0);
                 }
                 pthread_rwlock_unlock(&rwlock_grid);
-                break;
-            }
+                break;}
             case MOVE:{
                 // Bot movement message
                 BotMovement *m_movement = bot_movement_proto(responder);
@@ -296,8 +299,7 @@ void* bot_thread(void* arg){
                 // Send to client a check up message
                 int check = 1;
                 zmq_send(responder,&check,sizeof(int),0);
-                break;
-            }
+                break;}
             case DISCONNECT:{
                 BotDisconnect* m_disc = bot_disc_proto(responder);
                 pthread_rwlock_wrlock(&rwlock_grid);
@@ -323,8 +325,111 @@ void* bot_thread(void* arg){
                 pthread_rwlock_unlock(&rwlock_grid);
                 int check = 1;
                 zmq_send(responder,&check,sizeof(int),0);
+                break;}
+            default:
                 break;
             }
+            send_display_update(pusher,0);
+            pthread_cond_signal(&cond_pushes_recv);
+        }
+        if(strcmp(id,"wasps")==0){
+            msg_type m_type;
+            zmq_recv (responder, &m_type, sizeof(m_type), 0);
+            switch (m_type)
+            {
+            case CONNECT:{
+                // Bot connect message
+                int new_wasps;
+                zmq_recv (responder, &new_wasps, sizeof(n_wasps), 0);
+                pthread_rwlock_wrlock(&rwlock_grid);
+                if(new_wasps+n_roaches+n_wasps<=MAX_ROACHES){
+                    ch = new_wasps;
+
+                    // Send to client number of bots
+                    zmq_send(responder,&(ch),sizeof(int),ZMQ_SNDMORE);
+                    ConnectRepply m_repply = CONNECT_REPPLY__INIT;
+                    m_repply.n_id = new_wasps;
+                    m_repply.n_token = new_wasps;
+                    m_repply.id = malloc (sizeof(int32_t) * new_wasps);
+                    m_repply.token = malloc (sizeof(int32_t) * new_wasps);
+                    // Add #new_bots new bots to the data structure and grid
+                    wasp_data=wasp_connect(n_wasps,wasp_data,new_wasps,grid,pusher);
+                    for (size_t i = 0; i < new_wasps; i++){
+                        m_repply.id[i] = wasp_data[i+n_wasps].ch;
+                        m_repply.token[i] = wasp_data[i+n_wasps].token;
+                    }
+                    
+                    n_wasps = n_wasps+new_wasps;
+
+                    // Send to client a message with IDs and tokens
+                    n_bytes = connect_repply__get_packed_size(&m_repply);
+                    do{
+                        msg = calloc(1, n_bytes);
+                    }while(msg==NULL);
+                    connect_repply__pack(&m_repply,msg);
+                    zmq_send(responder, msg, n_bytes, 0);
+                    free(msg);
+                }else{
+                    // Case number of bots requested exceeds the maximum
+                    ch=-1;
+                    zmq_send(responder,&ch,sizeof(int),0);
+                }
+                pthread_rwlock_unlock(&rwlock_grid);
+                break;}
+            case MOVE:{
+                // Bot movement message
+                BotMovement *m_movement = bot_movement_proto(responder);
+                pthread_rwlock_wrlock(&rwlock_grid);
+                for (size_t i = 0; i < m_movement->n_id; i++){
+                    // Find the bot to move in the data
+                    ch_pos = find_ch_info(wasp_data,n_wasps,m_movement->id[i],m_movement->token[i]);
+                    if(ch_pos!=-1 && wasp_data[ch_pos].visible==0 && m_movement->movement[i]!=4){
+                        
+                        pos_x = wasp_data[ch_pos].pos_x;
+                        pos_y = wasp_data[ch_pos].pos_y;
+                        int pos_x0=pos_x, pos_y0 = pos_y;
+
+                        // Calculate new position
+                        new_position(&pos_x, &pos_y, m_movement->movement[i]);
+                        // Check grid availability for movement
+                        checkGrid_wasp(grid,&pos_x,&pos_y,wasp_data[ch_pos], pusher);
+
+                        // Publish information in SUB mode
+                        send_display_bot(wasp_data[ch_pos],pos_x0,pos_y0,pusher);
+                       
+                    }
+                }
+                pthread_rwlock_unlock(&rwlock_grid);
+                // Send to client a check up message
+                int check = 1;
+                zmq_send(responder,&check,sizeof(int),0);
+                break;}
+            case DISCONNECT:{
+                BotDisconnect* m_disc = bot_disc_proto(responder);
+                pthread_rwlock_wrlock(&rwlock_grid);
+                for (size_t i = 0; i < m_disc->n_id; i++){
+                    // Find the bot to move in the data
+                    ch_pos = find_ch_info(wasp_data,n_wasps,m_disc->id[i],m_disc->token[i]);
+                    if(ch_pos!=-1){
+                        int pos_x0 = wasp_data[ch_pos].pos_x;
+                        int pos_y0 = wasp_data[ch_pos].pos_y;
+                        send_display_bot(wasp_data[ch_pos],WINDOW_SIZE,WINDOW_SIZE,pusher);
+                        wasp_data = removeRoach(wasp_data,&n_wasps,ch_pos,grid);
+
+                        for (size_t i = 0; i < n_roaches; i++){
+                            if(wasp_data[i].pos_x==pos_y0 && wasp_data[i].pos_y==pos_x0){
+                                grid[pos_x0][pos_x0]=&wasp_data[i];
+                                // Publish message if an hidden bot was found
+                                send_display_bot(wasp_data[i],pos_x0,pos_y0,pusher);
+                                break;
+                            }
+                        } 
+                    }
+                }
+                pthread_rwlock_unlock(&rwlock_grid);
+                int check = 1;
+                zmq_send(responder,&check,sizeof(int),0);
+                break;}
             default:
                 break;
             }
@@ -332,8 +437,11 @@ void* bot_thread(void* arg){
             pthread_cond_signal(&cond_pushes_recv);
         }
     }
+
     
 }
+
+
 
 
 
@@ -366,4 +474,3 @@ int main()
     free(roaches_data);
 	return 0;
 }
-

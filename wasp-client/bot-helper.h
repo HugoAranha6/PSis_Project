@@ -29,13 +29,12 @@ typedef enum direction_t {
     RIGHT=3,
     HOLD=4,
     s_lizard=-1,
-    s_roach=-2
+    s_roach=-2,
+    s_wasp = -3
 }direction_t;
 
 // Type of message to be used in bots is only CONNECT OR MOVE
 typedef enum msg_type {CONNECT, MOVE, DISCONNECT} msg_type;
-
-
 
 pthread_mutex_t requester_mutex = PTHREAD_MUTEX_INITIALIZER;
 volatile sig_atomic_t ctrl_c_pressed = 0;
@@ -64,7 +63,7 @@ which is sent in the id field when connecting,
 score must be 0 if the bot is not assigned, bot connection
 messages exchange with server.
 */
-int roaches_initialize(void **requester, ConnectRepply** bots, int argc, char*argv[]){
+int wasps_initialize(void **requester, ConnectRepply** bots, int argc, char*argv[]){
     
     if(argc==1){
         printf("Wrong number of command line arguments, check instructions!\n");
@@ -87,23 +86,15 @@ int roaches_initialize(void **requester, ConnectRepply** bots, int argc, char*ar
     
     msg_type m_type = CONNECT;
 
-    BotConnect m_connect = BOT_CONNECT__INIT;
-    m_connect.n_score = n_bots; 
-    m_connect.score = (uint32_t*)malloc (sizeof(uint32_t) * n_bots);
+    
+    
 
-    int i=0;
-    // Atribute bot score
-    while (i<n_bots){
-        m_connect.score[i]=rand()%(5)+1; 
-        i++;
-    }
-    int n_bytes = bot_connect__get_packed_size(&m_connect);
-    char *msg = malloc(n_bytes);
-    bot_connect__pack(&m_connect,msg);
+   
 
-    assert(s_sendmore(*requester,"roaches")!=-1);
+
+    assert(s_sendmore(*requester,"wasps")!=-1);
     assert(zmq_send(*requester, &m_type,sizeof(m_type),ZMQ_SNDMORE)!=-1);
-    assert(zmq_send(*requester, msg, n_bytes, 0)!=-1);
+    assert(zmq_send(*requester, &n_bots, sizeof(n_bots),0)!=-1);
 
     int check=0;
     rc = zmq_recv (*requester, &check, sizeof(int), 0); // check=-1 connect failed
@@ -130,7 +121,7 @@ Output: -
 Generates random movement direction between 0-4, where 0-3
 is UP-DOW-LEFT-RIGHT and 4 is no move, and send to the server.
 */
-void bot_input(void* requester, ConnectRepply* roaches,int number_bots){
+void bot_input(void* requester, ConnectRepply* wasps,int number_bots){
     srand(getpid());
     int tmp;
     msg_type m_type = 1;
@@ -141,8 +132,8 @@ void bot_input(void* requester, ConnectRepply* roaches,int number_bots){
     m_movement.id = malloc(sizeof(int32_t)*number_bots);
     m_movement.token = malloc(sizeof(int32_t)*number_bots);
     m_movement.movement = malloc(sizeof(DirectionMove)*number_bots);
-    memcpy(m_movement.id,roaches->id,sizeof(int32_t)*number_bots);
-    memcpy(m_movement.token,roaches->token,sizeof(int32_t)*number_bots);
+    memcpy(m_movement.id,wasps->id,sizeof(int32_t)*number_bots);
+    memcpy(m_movement.token,wasps->token,sizeof(int32_t)*number_bots);
    while(1){ 
         //random direction assignment for each controlled bot 
         sleep(1); 
@@ -151,7 +142,6 @@ void bot_input(void* requester, ConnectRepply* roaches,int number_bots){
             pthread_mutex_unlock(&requester_mutex);
             break;
         }
-        
         for(size_t i=0; i<number_bots; i++){
             m_movement.movement[i]=rand()%5;
         }
@@ -160,7 +150,7 @@ void bot_input(void* requester, ConnectRepply* roaches,int number_bots){
         char *msg = (char*)malloc(n_bytes);
         bot_movement__pack(&m_movement,msg);
         // Server communication according to defined procedure
-        assert(s_sendmore(requester,"roaches")!=-1);
+        assert(s_sendmore(requester,"wasps")!=-1);
         assert(zmq_send(requester,&m_type,sizeof(m_type),ZMQ_SNDMORE)!=-1);
         assert(zmq_send(requester,msg,n_bytes,0)!=-1);
 
