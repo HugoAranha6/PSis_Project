@@ -152,7 +152,7 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
             display_data new_data;
             zmq_recv (*requester, &new_data, sizeof(new_data), 0);
             grid[new_data.pos_x0][new_data.pos_y0]=new_data;
-            if (new_data.direction!=-2){
+            if (new_data.direction!=-2 &&  new_data.direction!=-3){
                 n_lizards++;
             }
             print=1;
