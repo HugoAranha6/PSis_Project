@@ -152,7 +152,7 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
             display_data new_data;
             zmq_recv (*requester, &new_data, sizeof(new_data), 0);
             grid[new_data.pos_x0][new_data.pos_y0]=new_data;
-            if (new_data.direction!=-2 && new_data.direction!=-3){
+            if (new_data.direction!=-2){
                 n_lizards++;
             }
             print=1;
@@ -341,7 +341,10 @@ void printDisplay( display_data display[][WINDOW_SIZE],WINDOW** game_win,WINDOW*
                         if (i+cnt<WINDOW_SIZE-1) {
                             if(display[i+cnt][j].ch==' '){
                                 wmove(*game_win, i+cnt, j);
-                                if (display[i][j].score<50){
+                                if(display[i][j].score<0){
+                                    break;
+                                }
+                                else if (display[i][j].score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
@@ -360,11 +363,14 @@ void printDisplay( display_data display[][WINDOW_SIZE],WINDOW** game_win,WINDOW*
                         if (i-cnt>0) {
                             if(display[i-cnt][j].ch==' '){
                                 wmove(*game_win, i-cnt, j);
-                                if (display[i][j].score<50){
+                                if(display[i][j].score<0){
+                                    break;
+                                }
+                                else if (display[i][j].score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
-                                }  
+                                }    
                             }                         
                         }else{
                             break;
@@ -379,11 +385,14 @@ void printDisplay( display_data display[][WINDOW_SIZE],WINDOW** game_win,WINDOW*
                         if (j+cnt<WINDOW_SIZE-1) {
                             if(display[i][j+cnt].ch==' '){
                                 wmove(*game_win, i, j+cnt);
-                                if (display[i][j].score<50){
+                                if(display[i][j].score<0){
+                                    break;
+                                }
+                                else if (display[i][j].score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
-                                }  
+                                }    
                             }                         
                         }else{
                             break;
@@ -398,11 +407,14 @@ void printDisplay( display_data display[][WINDOW_SIZE],WINDOW** game_win,WINDOW*
                         if (j-cnt>0) {
                             if(display[i][j-cnt].ch==' '){
                                 wmove(*game_win, i, j-cnt);
-                                if (display[i][j].score<50){
+                                if(display[i][j].score<0){
+                                    break;
+                                }
+                                else if (display[i][j].score<50){
                                     waddch(*game_win,'.'| A_BOLD);
                                 }else{
                                     waddch(*game_win,'*'| A_BOLD);
-                                }  
+                                }    
                             }                         
                         }else{
                             break;
