@@ -11,5 +11,5 @@ clean:
 	cd bot-client && $(MAKE) clean
 	cd game_server && $(MAKE) clean
 	cd wasp-client && $(MAKE) clean
-	rm lizard-client roaches-client lizardsNroaches wasp
+	rm lizard-client roaches-client lizardsNroaches-server wasp
 
