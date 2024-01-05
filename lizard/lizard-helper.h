@@ -254,22 +254,22 @@ int user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** 
         {
         case KEY_LEFT:
             werase(*title_win);
-            mvwprintw(*title_win,0,0,"Left arrow is pressed");
+            mvwprintw(*title_win,0,0,"Left arrow is pressed | User: %c",m->ch);
             (*m).direction = LEFT;
             break;
         case KEY_RIGHT:
             werase(*title_win);
-            mvwprintw(*title_win,0,0,"Right arrow is pressed");
+            mvwprintw(*title_win,0,0,"Right arrow is pressed | User: %c",m->ch);
             (*m).direction = RIGHT;
             break;
         case KEY_DOWN:
             werase(*title_win);
-            mvwprintw(*title_win,0,0,"Down arrow is pressed");
+            mvwprintw(*title_win,0,0,"Down arrow is pressed | User: %c",m->ch);
             (*m).direction = DOWN;
             break;
         case KEY_UP:
             werase(*title_win);
-            mvwprintw(*title_win,0,0,"Up arrow is pressed");
+            mvwprintw(*title_win,0,0,"Up arrow is pressed | User: %c",m->ch);
             (*m).direction = UP;
             break;
         case 81:

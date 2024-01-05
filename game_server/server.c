@@ -34,6 +34,7 @@ void* time_thread(void* arg){
         pthread_rwlock_wrlock(&rwlock_grid);
         bot_reconnect(n_roaches,roaches_data,grid,pusher);
         pthread_rwlock_unlock(&rwlock_grid);
+        sleep(1);
     }
     return NULL;
 }
