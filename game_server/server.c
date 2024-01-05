@@ -315,8 +315,8 @@ void* bot_thread(void* arg){
                         roaches_data = removeRoach(roaches_data,&n_roaches,ch_pos,grid);
 
                         for (size_t i = 0; i < n_roaches; i++){
-                            if(roaches_data[i].pos_x==pos_y0 && roaches_data[i].pos_y==pos_x0){
-                                grid[pos_x0][pos_x0]=&roaches_data[i];
+                            if(roaches_data[i].pos_x==pos_x0 && roaches_data[i].pos_y==pos_y0){
+                                grid[pos_x0][pos_y0]=&roaches_data[i];
                                 // Publish message if an hidden bot was found
                                 send_display_bot(roaches_data[i],pos_x0,pos_y0,pusher);
                                 break;
@@ -417,15 +417,6 @@ void* bot_thread(void* arg){
                         int pos_y0 = wasp_data[ch_pos].pos_y;
                         send_display_bot(wasp_data[ch_pos],WINDOW_SIZE,WINDOW_SIZE,pusher);
                         wasp_data = removeRoach(wasp_data,&n_wasps,ch_pos,grid);
-
-                        for (size_t i = 0; i < n_roaches; i++){
-                            if(wasp_data[i].pos_x==pos_y0 && wasp_data[i].pos_y==pos_x0){
-                                grid[pos_x0][pos_x0]=&wasp_data[i];
-                                // Publish message if an hidden bot was found
-                                send_display_bot(wasp_data[i],pos_x0,pos_y0,pusher);
-                                break;
-                            }
-                        } 
                     }
                 }
                 pthread_rwlock_unlock(&rwlock_grid);

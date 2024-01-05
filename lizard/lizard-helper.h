@@ -503,9 +503,9 @@ void update_bot(display_data new_data, display_data grid[][WINDOW_SIZE]){
             // Non-hidden bot movement
             grid[new_data.pos_x0][new_data.pos_y0]=grid_null;
             grid[new_data.pos_x1][new_data.pos_y1]=new_data;
-        }else if(grid[new_data.pos_x0][new_data.pos_y0].ch!=new_data.ch){
+    }else if(grid[new_data.pos_x0][new_data.pos_y0].ch!=new_data.ch){
             // Hiden bot movement
             grid[new_data.pos_x1][new_data.pos_y1]=new_data;
-        }
+    }
 }
 

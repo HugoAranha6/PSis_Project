@@ -16,7 +16,6 @@ void* input_thread(void* arg){
  
     // User controlling the lizard
     user_input(requester,&m,&score,&title_win,&score_win);
-
     zmq_close(requester);
     return NULL;
 }
