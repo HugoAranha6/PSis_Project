@@ -239,7 +239,7 @@ server and receives score. When pressing Q to leave the game,
 a DISCONNECT message is sent and variable score will be assigned
 to the lizard current score
 */
-void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** score_win){
+int user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** score_win){
     
     //signal(SIGINT, (void (*)(int))handle_ctrl_c);
 
@@ -300,10 +300,8 @@ void user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW**
         pthread_mutex_unlock(&mutex_print);
     }while(key != 81 && key != 113 && ctrl_c_flag!=1);
 
-    endwin();
-    if(score_tmp==INT_MIN){
-        printf("User timeout error!\n");
-    }
+
+    return score_tmp;
 }
 
 // Structure used to store lizard char and score for ordering

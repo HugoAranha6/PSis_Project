@@ -13,11 +13,10 @@ int n_lizards;
 
 
 void* input_thread(void* arg){   
- 
+    int ret_value;
     // User controlling the lizard
-    user_input(requester,&m,&score,&title_win,&score_win);
-    zmq_close(requester);
-    return NULL;
+    ret_value = user_input(requester,&m,&score,&title_win,&score_win);
+    return (void*)(intptr_t)ret_value;
 }
 
 void* display_thread(void* arg){
@@ -71,9 +70,16 @@ int main(int argc, char *argv[])
     // Thread to handle display
     pthread_create(&thread_id[1],NULL,display_thread,NULL);
 
-    pthread_join(thread_id[0], NULL);
+    void* ret_value;
+    pthread_join(thread_id[0], &ret_value);
     pthread_cancel(thread_id[1]);
     // Display final user score
+    endwin();
+    reset_shell_mode();
+    zmq_close(requester);
+    if ((intptr_t)ret_value!=score){
+        printf("You were timed out!\n");
+    }
     printf("Your final score: %d\n",score);
 
     
