@@ -43,6 +43,6 @@ int main(int argc, char*argv[]){
     signal(SIGINT, handle_ctrl_c);
     // Send control commands for the bots
     bot_input(requester,roaches,number_bots);
-
+    zmq_close(requester);
     return 0;
 }

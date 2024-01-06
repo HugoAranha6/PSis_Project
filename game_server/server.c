@@ -50,27 +50,22 @@ void* display_thread(void* arg){
     sprintf(token_char, "%d", token);
     
     while(1){
-        pthread_mutex_lock(&mutex_display);
-        pthread_cond_wait(&cond_pushes_recv,&mutex_display);
-        pthread_rwlock_rdlock(&rwlock_grid);
         char id[100]="\0";
-        s_sendmore(publisher,token_char);
-        while(strcmp(id,"update")!=0){
-            zmq_recv (sock_recv, &id, sizeof(id), 0);
-            if(strcmp(id,"update")==0){
-                s_send(publisher, id);
-                // Update server display
-                printGrid(grid,&game_win,&score_win,lizard_data,n_clients);
-                pthread_mutex_unlock(&mutex_display);
-                pthread_rwlock_unlock(&rwlock_grid);
-            }else{
-                display_data new_data;
-                zmq_recv(sock_recv, &new_data, sizeof(new_data), 0);
-                s_sendmore(publisher, id);
-                zmq_send(publisher, &new_data, sizeof(display_data), ZMQ_SNDMORE);
-            }
-        }
-           
+        zmq_recv (sock_recv, &id, sizeof(id), 0);
+        if(strcmp(id,"update")==0){
+            s_sendmore(publisher,token_char);
+            s_send(publisher, id);
+            // Update server display
+            pthread_rwlock_rdlock(&rwlock_grid);
+            printGrid(grid,&game_win,&score_win,lizard_data,n_clients);
+            pthread_rwlock_unlock(&rwlock_grid);
+        }else{
+            display_data new_data;
+            zmq_recv(sock_recv, &new_data, sizeof(new_data), 0);
+            s_sendmore(publisher,token_char);
+            s_sendmore(publisher, id);
+            zmq_send(publisher, &new_data, sizeof(display_data), ZMQ_SNDMORE);
+        }           
     }
     return NULL;
 }
@@ -298,10 +293,10 @@ void* bot_thread(void* arg){
                         }
                     }
                 }
-                pthread_rwlock_unlock(&rwlock_grid);
                 // Send to client a check up message
                 int check = 1;
                 zmq_send(responder,&check,sizeof(int),0);
+                pthread_rwlock_unlock(&rwlock_grid);
                 break;}
             case DISCONNECT:{
                 BotDisconnect* m_disc = bot_disc_proto(responder);
