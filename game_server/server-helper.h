@@ -647,47 +647,6 @@ void eat_roach(client_info roach_info[],int n_roaches,client_info* lizard){
 }
 
 /*
-Input: array visible containing information of a roach being eaten or not,
-       number of bots connected, n_bots, array with current bot_data,
-       current grid_information, publisher socket and token publishing setting
-Output: -
-Function to reassign invisible bots. 5s period is done by comparing current
-time of operation with the time inside the visible array (0 indicates that
-the bot was nto eaten so nothing to do). grid variable is used to place the
-bot in the grid if there is a need to reassign it if the 5s have passed.
-Information is then published according to protocols defined.
-*/
-void bot_reconnect(int n_bots,client_info bot_data[],client_info* grid[][WINDOW_SIZE],void* publisher){    
-    time_t current_time=time(NULL);
-    for (size_t i = 0; i < n_bots; i++)
-    {
-        if(bot_data[i].visible!=0){
-            // Check if 5s have passed
-            if(current_time - bot_data[i].visible>=5){
-                bot_data[i].visible=0;
-                int pos_x,pos_y;
-                srand((unsigned int)time(NULL));
-                // Generate random position
-                do{
-                    pos_x = 1 + rand()%(WINDOW_SIZE-2);
-                    pos_y = 1 + rand()%(WINDOW_SIZE-2); 
-                }while(grid[pos_x][pos_y]!=NULL && grid[pos_x][pos_y]->direction!=-2);
-                bot_data[i].pos_x=pos_x;
-                bot_data[i].pos_y=pos_y;
-
-                // Assign to grid
-                grid[pos_x][pos_y]=&bot_data[i];
-
-                // Publish information
-                send_display_bot(bot_data[i],bot_data[i].pos_x,bot_data[i].pos_y,publisher);
-            }
-        }
-    }
-}
-
-
-
-/*
 Input: structure of client information lizard_data, publisher
        socket, two integers x0 and y0, an integer type
        (type = 1 -> disconnect, type=0 movement or score change),
@@ -1000,6 +959,11 @@ void checkGrid_wasp(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_inf
     }
 }
 
+/*
+Input: number of wasps, wasp data, the grid and a socket
+Output: returns the updated wasp data
+Function handles the disconnection process of a wasp-client if there is inactivity for more than the TIMEOUT period .
+*/
 client_info* wasp_timeout(int* n_clients,client_info* wasp_data, client_info* grid[][WINDOW_SIZE],void* pusher){
     int curr_time = time(NULL);
     int flag_upd = 0;
@@ -1019,6 +983,12 @@ client_info* wasp_timeout(int* n_clients,client_info* wasp_data, client_info* gr
    
 }
 
+/*
+Input: number of raoches, roach data, the grid and a socket
+Output: returns the updated roach data
+Function handles the disconnection process of a roach-client if there is inactivity for more than the TIMEOUT period
+and the reappearence of roaches if they have been eaten.
+*/
 client_info* roach_time(int* n_clients,client_info* bot_data, client_info* grid[][WINDOW_SIZE],void* pusher){
     int curr_time = time(NULL);
     int flag_upd = 0;
