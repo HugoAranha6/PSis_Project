@@ -41,7 +41,7 @@ typedef enum direction_t {
 
 typedef enum msg_type {CONNECT, MOVE, DISCONNECT} msg_type;
 
-// User to Server messages
+// User to Server messages for movements
 typedef struct client{   
     char ch;                // Identify user 
     direction_t direction ; // Identify movement direction
@@ -61,15 +61,8 @@ typedef struct client_info{
     int token;
     direction_t direction; //This variable will take up,down,left,right, -1(connect user), -2(roach), -3(wasp)
     int visible;
+    int timeout;
 } client_info; 
-
-// Bot to Server messages
-typedef struct bot{   
-    msg_type type;              // Identify message type 0/1
-    int id[10];                 // Identify bot 
-    direction_t direction[10] ; // Identify movement direction
-    int token[10];              // Identify bot
-}bot;
 
 // Server to Display messages
 typedef struct display_data{
@@ -965,7 +958,7 @@ client_info* wasp_connect(int n_bots, client_info* bot_data, int new_bots, clien
         wasp_update[n_bots+i].token = rand();
         wasp_update[n_bots+i].direction = -3;
         wasp_update[n_bots+i].visible = 0;
-
+        wasp_update[n_bots+i].timeout = time(NULL);
         // Generate positon
         do{
             pos_x = 1 + rand()%(WINDOW_SIZE-2);
@@ -979,8 +972,6 @@ client_info* wasp_connect(int n_bots, client_info* bot_data, int new_bots, clien
     }
     return wasp_update;
 }
-
-
 
 /*
 Input: grid information vector, pointers to integers of the future
@@ -1008,4 +999,23 @@ void checkGrid_wasp(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_inf
         grid[client.pos_x][client.pos_y]=NULL;
 
     }
+}
+
+client_info* wasp_timeout(int* n_clients,client_info* wasp_data, client_info* grid[][WINDOW_SIZE],void* pusher){
+    int curr_time = time(NULL);
+    int flag_upd = 0;
+    for (size_t i = 0; i < *n_clients; i++){
+        // If time of last movement was more than 0s ago, remove this user
+        if(curr_time - wasp_data[i].timeout>TIMEOUT){
+            send_display_bot(wasp_data[i],WINDOW_SIZE,WINDOW_SIZE,pusher);
+            wasp_data = removeRoach(wasp_data,n_clients,i,grid);
+            i=i-1;           
+            flag_upd = 1;
+        }
+    }
+    if (flag_upd==1){
+        s_send(pusher,"update");
+    }
+    return wasp_data;
+   
 }

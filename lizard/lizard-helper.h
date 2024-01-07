@@ -185,7 +185,8 @@ void user_interface(WINDOW **title_win, WINDOW** score_win, WINDOW** game_win){
     initscr();		    	
 	cbreak();				
     keypad(stdscr, TRUE);   
-	noecho();			    
+	noecho();
+    curs_set(0);			    
     refresh();
     /* creates windows */
     *title_win = newwin(1, 50, 1, 1);

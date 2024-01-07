@@ -34,6 +34,9 @@ void* time_thread(void* arg){
         pthread_rwlock_wrlock(&rwlock_grid);
         bot_reconnect(n_roaches,roaches_data,grid,pusher);
         pthread_rwlock_unlock(&rwlock_grid);
+        pthread_rwlock_wrlock(&rwlock_grid);
+        wasp_data = wasp_timeout(&n_wasps,wasp_data,grid,pusher);
+        pthread_rwlock_unlock(&rwlock_grid);
         sleep(1);
     }
     return NULL;
@@ -124,11 +127,10 @@ void* lizard_thread(void* arg){
                 zmq_recv (responder, &m_move, sizeof(m_move), 0);
                 // Lizard movement message
                 // Find lizard in the stored data based on the char and token received
-                pthread_rwlock_rdlock(&rwlock_grid);
+                pthread_rwlock_wrlock(&rwlock_grid);
                 ch_pos = find_ch_info(lizard_data, n_clients, m_move.ch,m_move.token);
-                pthread_rwlock_unlock(&rwlock_grid);
                 if(ch_pos != -1){
-                    pthread_rwlock_wrlock(&rwlock_grid);
+                    
                     lizard_data[ch_pos].visible=time(NULL);
                     pos_x = lizard_data[ch_pos].pos_x;
                     pos_y = lizard_data[ch_pos].pos_y;
@@ -148,37 +150,34 @@ void* lizard_thread(void* arg){
                     }else{
                         send_display_user(lizard_data[ch_pos],pusher,pos_x,pos_y,0);
                     }
-                    pthread_rwlock_unlock(&rwlock_grid);
                     // Send current score to client
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);
                 }else{
                     int time_o=INT_MIN;
                     zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
+                pthread_rwlock_unlock(&rwlock_grid);
                 break;}
             case DISCONNECT:{
                 client_disconnect m_disc;
                 zmq_recv (responder, &m_disc, sizeof(m_disc), 0); 
                 // Lizard disconnect message
                 // Find lizard in the stored data based on the char and token received
-                pthread_rwlock_rdlock(&rwlock_grid);
+                pthread_rwlock_wrlock(&rwlock_grid);
                 ch_pos = find_ch_info(lizard_data, n_clients, m_disc.ch,m_disc.token);
-                pthread_rwlock_unlock(&rwlock_grid);
                 if(ch_pos!=-1){
+                    pthread_rwlock_wrlock(&rwlock_grid);
                     // Send final score
                     zmq_send (responder, &(lizard_data[ch_pos].score), sizeof(int), 0);
-                    
-                    // Remove lizard from the server data and grid
-                    pthread_rwlock_wrlock(&rwlock_grid);
                     // PUSH to display thread
                     send_display_user(lizard_data[ch_pos],pusher,0,0,1);
 
                     lizard_data = removeClient(lizard_data,&n_clients,ch_pos,grid,user_char);
-                    pthread_rwlock_unlock(&rwlock_grid);
                 }else{
                     int time_o=INT_MIN;
                     zmq_send(responder,&time_o,sizeof(time_o),0);
                 }
+                pthread_rwlock_unlock(&rwlock_grid);
                 break;}
             default:
                 break;
@@ -265,7 +264,7 @@ void* bot_thread(void* arg){
                     // Find the bot to move in the data
                     ch_pos = find_ch_info(roaches_data,n_roaches,m_movement->id[i],m_movement->token[i]);
                     if(ch_pos!=-1 && roaches_data[ch_pos].visible==0 && m_movement->movement[i]!=4){
-                        
+                        roaches_data[ch_pos].timeout = time(NULL);
                         pos_x = roaches_data[ch_pos].pos_x;
                         pos_y = roaches_data[ch_pos].pos_y;
                         int pos_x0=pos_x, pos_y0 = pos_y;
@@ -379,12 +378,11 @@ void* bot_thread(void* arg){
                 for (size_t i = 0; i < m_movement->n_id; i++){
                     // Find the bot to move in the data
                     ch_pos = find_ch_info(wasp_data,n_wasps,m_movement->id[i],m_movement->token[i]);
-                    if(ch_pos!=-1 && wasp_data[ch_pos].visible==0 && m_movement->movement[i]!=4){
-                        
+                    if(ch_pos!=-1 && m_movement->movement[i]!=4){
                         pos_x = wasp_data[ch_pos].pos_x;
                         pos_y = wasp_data[ch_pos].pos_y;
                         int pos_x0=pos_x, pos_y0 = pos_y;
-
+                        wasp_data[ch_pos].timeout = time(NULL);
                         // Calculate new position
                         new_position(&pos_x, &pos_y, m_movement->movement[i]);
                         // Check grid availability for movement
