@@ -32,7 +32,7 @@ void* time_thread(void* arg){
         lizard_data = user_timeout(&n_clients,lizard_data,grid,user_char,pusher);
         pthread_rwlock_unlock(&rwlock_grid);
         pthread_rwlock_wrlock(&rwlock_grid);
-        bot_reconnect(n_roaches,roaches_data,grid,pusher);
+        roaches_data = roach_time(&n_roaches,roaches_data,grid,pusher);
         pthread_rwlock_unlock(&rwlock_grid);
         pthread_rwlock_wrlock(&rwlock_grid);
         wasp_data = wasp_timeout(&n_wasps,wasp_data,grid,pusher);

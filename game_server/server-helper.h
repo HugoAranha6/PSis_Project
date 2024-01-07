@@ -580,8 +580,6 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, BotCon
 
     int pos_x,pos_y;
 
-
-
     srand((unsigned int)time(NULL));
 
     // Add previous information to the new bot information array
@@ -609,6 +607,7 @@ client_info* bot_connect(int n_bots, client_info* bot_data, int new_bots, BotCon
         bot_update[n_bots+i].token = rand();
         bot_update[n_bots+i].direction = -2;
         bot_update[n_bots+i].visible = 0;
+        bot_update[n_bots+i].timeout = time(NULL);      
 
         // Generate positon
         do{
@@ -1017,5 +1016,42 @@ client_info* wasp_timeout(int* n_clients,client_info* wasp_data, client_info* gr
         s_send(pusher,"update");
     }
     return wasp_data;
+   
+}
+
+client_info* roach_time(int* n_clients,client_info* bot_data, client_info* grid[][WINDOW_SIZE],void* pusher){
+    int curr_time = time(NULL);
+    int flag_upd = 0;
+    for (size_t i = 0; i < *n_clients; i++){
+        // If time of last movement was more than 0s ago, remove this user
+        if(curr_time - bot_data[i].timeout>TIMEOUT){
+            send_display_bot(bot_data[i],WINDOW_SIZE,WINDOW_SIZE,pusher);
+            bot_data = removeRoach(bot_data,n_clients,i,grid);
+            i=i-1;           
+            flag_upd = 1;
+        }else if (bot_data[i].visible!=0 && curr_time - bot_data[i].visible>=5){
+            bot_data[i].visible=0;
+            int pos_x,pos_y;
+            srand((unsigned int)time(NULL));
+            // Generate random position
+            do{
+                pos_x = 1 + rand()%(WINDOW_SIZE-2);
+                pos_y = 1 + rand()%(WINDOW_SIZE-2); 
+            }while(grid[pos_x][pos_y]!=NULL && grid[pos_x][pos_y]->direction!=-2);
+            bot_data[i].pos_x=pos_x;
+            bot_data[i].pos_y=pos_y;
+
+            // Assign to grid
+            grid[pos_x][pos_y]=&bot_data[i];
+
+            // Publish information
+            send_display_bot(bot_data[i],bot_data[i].pos_x,bot_data[i].pos_y,pusher);
+            flag_upd = 1;
+        }
+    }
+    if (flag_upd==1){
+        s_send(pusher,"update");
+    }
+    return bot_data;
    
 }
