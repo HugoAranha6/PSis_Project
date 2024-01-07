@@ -59,7 +59,7 @@ typedef struct client_info{
     int pos_x, pos_y;
     int score;
     int token;
-    direction_t direction; //This variable will take up,down,left,right, -1(connect user), -2(roach)
+    direction_t direction; //This variable will take up,down,left,right, -1(connect user), -2(roach), -3(wasp)
     int visible;
 } client_info; 
 
@@ -839,7 +839,6 @@ client_info* user_timeout(int* n_clients,client_info* lizard_data, client_info* 
             s_send(pusher,"lizard");
             zmq_send(pusher,&new_data,sizeof(new_data),0);
             flag_upd = 1;
-            
         }
     }
     if (flag_upd==1){
