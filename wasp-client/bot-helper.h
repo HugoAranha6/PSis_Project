@@ -42,25 +42,27 @@ volatile sig_atomic_t ctrl_c_pressed = 0;
 /*--------------------------------------------------------------
 NOTE: Communication with server procedure.
       Connect:
-        1. Send id of who is contacting: "roaches"
+        1. Send id of who is contacting: "wasps"
         2. Send number of bots to be connected
-        3. Send bot communication message with scores
-        4. Receive whether connection was successful or not
-        5. Received atrributed bot ids and tokens
+        3. Receive whether connection was successful or not
+        4. Received atrributed bot ids and tokens
       Movement:
-        1. Send id of who is contacting: "roaches"
+        1. Send id of who is contacting: "wasps"
         2. Send bot message with movements assigned to each bot
-        3. Receive integer on success or failure
+        3. Receive a integer
+      Disconnect:
+        1 Send id of who contacts: "wasp"
+        2 Send disconnect message with ids and tokens
+        3 Receive integer
 ----------------------------------------------------------------*/
-
-
+ 
+ 
 /*
 Input: Pointer to a ZMQ socket pointer, bot type structure to
        exchange information, argc and argv.
-Output: Integer, number of bots to be controlled. 
+Output: Integer, number of wasps to be controlled.
 Initialize communication ZMQ socket, initialize bot score
-which is sent in the id field when connecting,
-score must be 0 if the bot is not assigned, bot connection
+which is sent in the id field when connecting, bot connection
 messages exchange with server.
 */
 int wasps_initialize(void **requester, ConnectRepply** bots, int argc, char*argv[]){
@@ -80,18 +82,13 @@ int wasps_initialize(void **requester, ConnectRepply** bots, int argc, char*argv
     int rc = zmq_connect (*requester, user_server_com);
     assert(rc==0);
 
+    // Generate number of bots
     srand(getpid());
     int n_bots = rand()%(MAX_BOTS)+1;
     
-    
     msg_type m_type = CONNECT;
 
-    
-    
-
-   
-
-
+    // Send connection message sequence
     assert(s_sendmore(*requester,"wasps")!=-1);
     assert(zmq_send(*requester, &m_type,sizeof(m_type),ZMQ_SNDMORE)!=-1);
     assert(zmq_send(*requester, &n_bots, sizeof(n_bots),0)!=-1);
@@ -103,6 +100,7 @@ int wasps_initialize(void **requester, ConnectRepply** bots, int argc, char*argv
         printf("Server full, try again later!\n");
         exit(0);
     }else{
+        // Receive repply with ids and tokens if successful connection
         ConnectRepply* m_repply;
         zmq_msg_t zmq_msg;
         zmq_msg_init(&zmq_msg);
@@ -124,7 +122,8 @@ is UP-DOW-LEFT-RIGHT and 4 is no move, and send to the server.
 void bot_input(void* requester, ConnectRepply* wasps,int number_bots){
     srand(getpid());
     int tmp;
-    msg_type m_type = 1;
+    msg_type m_type = MOVE;
+    // Variable for bot movement communication with server
     BotMovement m_movement = BOT_MOVEMENT__INIT;
     m_movement.n_id = number_bots;
     m_movement.n_movement = number_bots;
@@ -134,6 +133,7 @@ void bot_input(void* requester, ConnectRepply* wasps,int number_bots){
     m_movement.movement = malloc(sizeof(DirectionMove)*number_bots);
     memcpy(m_movement.id,wasps->id,sizeof(int32_t)*number_bots);
     memcpy(m_movement.token,wasps->token,sizeof(int32_t)*number_bots);
+
    while(1){ 
         //random direction assignment for each controlled bot 
         sleep(1); 
@@ -143,6 +143,7 @@ void bot_input(void* requester, ConnectRepply* wasps,int number_bots){
             break;
         }
         for(size_t i=0; i<number_bots; i++){
+            // Generate random movements
             m_movement.movement[i]=rand()%5;
         }
         

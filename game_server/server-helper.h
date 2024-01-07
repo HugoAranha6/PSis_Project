@@ -81,11 +81,9 @@ typedef struct display_data{
     direction_t direction;
 }display_data;
 
-pthread_mutex_t mutex_display=PTHREAD_MUTEX_INITIALIZER;
+
 pthread_rwlock_t rwlock_grid = PTHREAD_RWLOCK_INITIALIZER;
-pthread_cond_t cond_grid = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond_pushes_sent = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond_pushes_recv = PTHREAD_COND_INITIALIZER;
+
 
 /*
 NOTE: Communication with client and display procedure.
@@ -823,10 +821,16 @@ void sync_display(void* responder,client_info* grid[][WINDOW_SIZE]){
 }
 
 
+/*
+Input: number of lizard clients, lizard data, the grid, id and publisher
+Output: returns the updated lizard data
+Function handles the disconnection process of a lizard-client if there is inactivity for more than the TIMEOUT period .
+*/
 client_info* user_timeout(int* n_clients,client_info* lizard_data, client_info* grid[][WINDOW_SIZE],char id[],void* pusher){
     int curr_time = time(NULL);
     int flag_upd = 0;
     for (size_t i = 0; i < *n_clients; i++){
+        // If time of last movement was more than 0s ago, remove this user
         if(curr_time - lizard_data[i].visible>TIMEOUT){
             display_data new_data={.ch=lizard_data[i].ch,.pos_x0=lizard_data[i].pos_x, .pos_y0=lizard_data[i].pos_y,.pos_x1=0,.pos_y1=0};
             lizard_data = removeClient(lizard_data,n_clients,i,grid,id);
@@ -840,12 +844,16 @@ client_info* user_timeout(int* n_clients,client_info* lizard_data, client_info* 
     }
     if (flag_upd==1){
         s_send(pusher,"update");
-        pthread_cond_signal(&cond_pushes_recv);
     }
     return lizard_data;
    
 }
 
+/*
+Input: socket responder
+Output: Received message
+Function receives and unpacks a roach connection message.
+*/
 BotConnect* bot_connect_proto(void* responder){
     BotConnect* m_connect;
     zmq_msg_t zmq_msg;
@@ -857,6 +865,11 @@ BotConnect* bot_connect_proto(void* responder){
     return m_connect;
 }
 
+/*
+Input: socket responder
+Output: Received message
+Function receives and unpacks a bot movement message.
+*/
 BotMovement* bot_movement_proto(void* responder){
     BotMovement* m_movement;
     zmq_msg_t zmq_msg;
@@ -868,6 +881,11 @@ BotMovement* bot_movement_proto(void* responder){
     return m_movement;
 }
 
+/*
+Input: socket responder
+Output: Received message
+Function receives and unpacks a bot disconnect message.
+*/
 BotDisconnect* bot_disc_proto(void* responder){
     BotDisconnect* m_disc;
     zmq_msg_t zmq_msg;
@@ -879,6 +897,11 @@ BotDisconnect* bot_disc_proto(void* responder){
     return m_disc;
 }
 
+/*
+Input: Client information array, the size, the index to remove and the grid.
+Output: Returns the roach list updated.
+Function removes a roach from the roach list and updates the grid.
+*/
 client_info* removeRoach(client_info arr[], int *size, int indexToRemove,client_info* grid[][WINDOW_SIZE]){
     client_info* roach_update = (client_info*)malloc((*size-1)* sizeof(client_info));
     // Case of bugs, index outside boundaries
@@ -909,14 +932,16 @@ client_info* removeRoach(client_info arr[], int *size, int indexToRemove,client_
 }
 
 
-
+/*
+Input: number of bots, the bot data, numver if new bots, the grid and a socket.
+Output: Returns the wasp list updated.
+Function establishes the connection of a wasp, generating an id and a token. Then, a position is generated and the grid is updated
+*/
 client_info* wasp_connect(int n_bots, client_info* bot_data, int new_bots, client_info* grid[][WINDOW_SIZE], void* socket){
 
     client_info* wasp_update = (client_info*)malloc((n_bots+new_bots)* sizeof(client_info));
 
     int pos_x,pos_y;
-
-
 
     srand((unsigned int)time(NULL));
 
@@ -960,21 +985,19 @@ client_info* wasp_connect(int n_bots, client_info* bot_data, int new_bots, clien
 
 /*
 Input: grid information vector, pointers to integers of the future
-       position (x,y) and a pointer to the roach to move
-Output: an array of size 2, of the position that becomes available
-        in the grid if the roach moves
-Function that checks if the given roach movement is possible or not
-possible, if there is a lizard in new position, and returns the position
-that just became free if there is a movement 
+       position (x,y) and a pointer to the wasp to move
+Output: there is no output
+Function that checks if the given wasp movement is possible or not
+possible, if there is a lizard in new position
 */
 void checkGrid_wasp(client_info* grid[][WINDOW_SIZE], int* x, int* y, client_info client, void* publisher) {
 
 
     if(grid[*x][*y] != NULL){
         // Case grid entry is a wasp
-        if(grid[*x][*y]->direction ==-3){
+        if(grid[*x][*y]->direction ==-3){// next position wasp
         }else if(grid[*x][*y]->direction ==-2){// next position is a roach
-        }else{
+        }else{ // next position lizard
             grid[*x][*y]->score = grid[*x][*y]->score -10;
             send_display_user(*(grid[*x][*y]),publisher,*x,*y,0);
         }

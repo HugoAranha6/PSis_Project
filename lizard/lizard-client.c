@@ -75,6 +75,8 @@ int main(int argc, char *argv[])
     endwin();
     reset_shell_mode();
     zmq_close(requester);
+
+    // Display final information
     if ((intptr_t)ret_value!=score){
         printf("You were timed out!\n");
     }

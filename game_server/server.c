@@ -463,12 +463,16 @@ int main()
     // Create thread for roach and wasp clients
     pthread_create(&thread_id[6],NULL,bot_thread,NULL);
 
+    // Create proxy for ROUTER-DEALER pattern
     zmq_proxy (responder_lizard, backend, NULL);
 
+    // Never gets here
   	endwin();			
     zmq_close (publisher);
     zmq_close (responder_lizard);
+    zmq_close(responder_bot);
     free(lizard_data);
     free(roaches_data);
+    free(wasp_data);
 	return 0;
 }

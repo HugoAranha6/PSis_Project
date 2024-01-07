@@ -74,7 +74,7 @@ NOTE: Communication with server procedure.
         2. Send client message of type MOVE with movement input 
         3. Receive current user score
       Disconnect
-        1. Send if id of who is contacting: "client"
+        1. Send id of who is contacting: "client"
         2. Send client message of type DISCONNECT
         3. Receive user current score
 ----------------------------------------------------------------*/
@@ -146,6 +146,8 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
     char id[100]="\0";
     int print=0;
     int n_lizards=0;
+
+    // Receive current game board information
     do{            
         zmq_recv (*requester, &id, sizeof(id), 0);
         if(strcmp(id,"data")==0){
@@ -167,6 +169,7 @@ int user_initialize(void **requester,void **subscriber, client* m, int argc,char
     char token_char[100];
     sprintf(token_char,"%d",token_display);
 
+    // Connect subscriber socket and set the option
     zmq_connect (*subscriber, display_server_com);
     zmq_setsockopt (*subscriber, ZMQ_SUBSCRIBE,token_char, strlen(token_char));
 
@@ -220,19 +223,11 @@ int user_server_message(void* requester,client m, msg_type m_type){
     return score;
 }
 
-// Flag to indicate if Ctrl+C is pressed
-volatile sig_atomic_t ctrl_c_flag = 0;
-
-// Signal handler for Ctrl+C
-void handle_ctrl_c(int signum,void* requester,client* m) {
-    ctrl_c_flag=1;
-}
-
 
 /*
 Input: requester socket, pointer to client type message
        integer score pointer
-Output: -
+Output: returns the final lizard score or a timeout flag
 Function that runs while the user provides control inputs
 to its lizard. Gets input from keyboard, send message to
 server and receives score. When pressing Q to leave the game,
@@ -241,8 +236,6 @@ to the lizard current score
 */
 int user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** score_win){
     
-    //signal(SIGINT, (void (*)(int))handle_ctrl_c);
-
     int key;
     int score_tmp;
     msg_type m_type=1;
@@ -283,23 +276,24 @@ int user_input(void* requester,client* m,int* score,WINDOW** title_win,WINDOW** 
             key = 'x'; 
             break;
         }
-        if(ctrl_c_flag==1){
-            m_type=2;
-            score_tmp = user_server_message(requester,*m,m_type);
-        }else if (key != 'x'){
+
+        // Functionality disabled for ctr+c
+        if (key != 'x'){
             score_tmp = user_server_message(requester,*m,m_type);
         }
-        /* Print it on screen */
+
         wrefresh(*title_win);
+
         if(score_tmp==INT_MIN){
+            // Timed out case
             break;
         }
         else{
             *score = score_tmp;
         }
-        pthread_mutex_unlock(&mutex_print);
-    }while(key != 81 && key != 113 && ctrl_c_flag!=1);
 
+        pthread_mutex_unlock(&mutex_print);
+    }while(key != 81 && key != 113);
 
     return score_tmp;
 }
@@ -313,6 +307,12 @@ int compareLizard_ch(const void *a, const void *b) {
     return ((struct CharScorePair *)a)->ch - ((struct CharScorePair *)b)->ch;
 }
 
+/*
+Input: display information, windows to print game board and score
+Output:-
+Update the current visual display. Goes through display[][] and
+prints the content.
+*/
 void printDisplay( display_data display[][WINDOW_SIZE],WINDOW** game_win,WINDOW** score_win,int n_lizard){
     
     CharScorePair lizard_arr[n_lizard];
