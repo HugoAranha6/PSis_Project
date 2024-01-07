@@ -1025,9 +1025,19 @@ client_info* roach_time(int* n_clients,client_info* bot_data, client_info* grid[
     for (size_t i = 0; i < *n_clients; i++){
         // If time of last movement was more than 0s ago, remove this user
         if(curr_time - bot_data[i].timeout>TIMEOUT){
+            int pos_x0 = bot_data[i].pos_x;
+            int pos_y0 = bot_data[i].pos_y;
             send_display_bot(bot_data[i],WINDOW_SIZE,WINDOW_SIZE,pusher);
             bot_data = removeRoach(bot_data,n_clients,i,grid);
-            i=i-1;           
+            i=i-1;
+            for (size_t j = 0; j < *n_clients; j++){
+                if(bot_data[j].pos_x==pos_x0 && bot_data[j].pos_y==pos_y0){
+                    grid[pos_x0][pos_y0]=&bot_data[j];
+                    // Publish message if an hidden bot was found
+                    send_display_bot(bot_data[j],pos_x0,pos_y0,pusher);
+                    break;
+                }
+            }           
             flag_upd = 1;
         }else if (bot_data[i].visible!=0 && curr_time - bot_data[i].visible>=5){
             bot_data[i].visible=0;
