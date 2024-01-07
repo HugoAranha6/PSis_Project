@@ -441,17 +441,26 @@ int main()
     //int* visible=(int*)malloc(0*sizeof(int)); // Variable to store bot visibility, 0=visible
     context = zmq_ctx_new();
     
+    // Initialize global socket variables and the array of available lizard letters.
     int token = server_initialize(context,&responder_lizard,&responder_bot,&publisher,&backend,user_char);
     
+    // Initialize global interfacce variables
 	server_interface(&title_win,&game_win,&score_win);
+
     lizard_data = malloc(0);
     roaches_data = malloc(0);
+    wasp_data = malloc(0);
+
     pthread_t thread_id[7];
+    // Create thread for time related functions
     pthread_create(&thread_id[0],NULL,time_thread,NULL);   
+    // Create thread for display
     pthread_create(&thread_id[1],NULL,display_thread,(void *)&token);
-    for (size_t i = 0; i < 1; i++){
+    // Create threads for lizard_clients
+    for (size_t i = 0; i < 4; i++){
         pthread_create(&thread_id[i+2],NULL,lizard_thread,(void *)&token); 
     }
+    // Create thread for roach and wasp clients
     pthread_create(&thread_id[6],NULL,bot_thread,NULL);
 
     zmq_proxy (responder_lizard, backend, NULL);
