@@ -184,7 +184,6 @@ void* lizard_thread(void* arg){
                 break;
             }
             send_display_update(pusher,0);
-            pthread_cond_signal(&cond_pushes_recv);
         }
         // Display message
         if(strcmp(id,"display")==0){
@@ -328,7 +327,6 @@ void* bot_thread(void* arg){
                 break;
             }
             send_display_update(pusher,0);
-            pthread_cond_signal(&cond_pushes_recv);
         }
         if(strcmp(id,"wasps")==0){
             msg_type m_type;
@@ -423,7 +421,6 @@ void* bot_thread(void* arg){
                 break;
             }
             send_display_update(pusher,0);
-            pthread_cond_signal(&cond_pushes_recv);
         }
     }
 
